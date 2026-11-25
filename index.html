@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ZAMONLAR JANGI</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="game"></div>
+
+<!-- Ekran effektlari -->
+<div id="vignette"></div>
+<div id="hurt"></div>
+<div id="flashbang"></div>
+<div id="adsVig"></div>
+<div id="scope"><div class="sh"></div><div class="sv"></div><div class="mil mh"></div><div class="mil mv"></div><div class="rng"></div>
+  <div id="scopeInfo"></div><div id="scopeBar"><div id="scopeBreath"></div></div></div>
+
+<!-- HUD -->
+<div id="hud" class="hidden">
+  <canvas id="minimap" width="200" height="200"></canvas>
+  <canvas id="compass" width="480" height="34"></canvas>
+  <div id="waveBox">
+    <div id="waveLabel">TO'LQIN 1/10</div>
+    <div id="enemyLabel">Dushmanlar: 0</div>
+    <div id="scoreLabel">0</div>
+  </div>
+  <div id="objective"></div>
+  <div id="mpBoard"></div>
+  <div id="vehHud"><div id="vehName"></div><div id="vehSeats"></div><div id="vehBar"><div id="vehFill"></div></div><div id="vehAmmo"><span id="vehRk"></span><span id="vehHeatTxt"></span><div id="vehHeat"><div id="vehHeatFill"></div></div></div><div id="vehHint"></div></div>
+  <div id="flagStatus"></div>
+  <div id="killfeed"></div>
+  <div id="crosshair"><div class="ch t"></div><div class="ch b"></div><div class="ch l"></div><div class="ch r"></div><div class="dot"></div></div>
+  <div id="hitmarker"><i></i><i></i><i></i><i></i></div>
+  <div id="healthBox">
+    <div id="healthIcon">✚</div>
+    <div id="healthBar"><div id="healthFill"></div></div>
+    <div id="healthNum">100</div>
+  </div>
+  <div id="weaponBox">
+    <div id="weaponSlots"></div>
+    <div id="weaponName">—</div>
+    <div id="ammo"><span id="mag">0</span><span id="reserve">/ 0</span></div>
+    <div id="grenades"></div>
+    <div id="weaponHint"></div>
+  </div>
+  <div id="streaks"></div>
+  <div id="popups"></div>
+  <div id="centerMsg"><div id="cmTitle"></div><div id="cmSub"></div></div>
+  <div id="prompt"></div>
+  <div id="reloadHint"></div>
+  <div id="dmgInd"></div>
+  <div id="grenadeInd">💣</div>
+</div>
+
+<!-- Asosiy menyu -->
+<div id="menu" class="screen">
+  <div class="menuInner">
+    <h1>ZAMONLAR <span>JANGI</span></h1>
+    <div class="tag">Tarix va zamonaviylik — bitta jang maydonida</div>
+    <div id="eras">
+      <div class="era sel" data-era="historical">
+        <div class="eraYear">1944</div>
+        <div class="eraName">QISHKI FRONT</div>
+        <div class="eraType">TARIXIY KAMPANIYA</div>
+        <div class="eraDesc">Ikkinchi jahon urushi. Qorli shaharcha: uylarga kiring, podvallardan noyob qurol toping, jip va vertolyotni boshqaring.</div>
+      </div>
+      <div class="era" data-era="modern">
+        <div class="eraYear">2026</div>
+        <div class="eraName">CHO'L BO'RONI</div>
+        <div class="eraType">ZAMONAVIY KAMPANIYA</div>
+        <div class="eraDesc">Maxsus operatsiya. Cho'ldagi shahar: optika, RPG, minigan, vertolyot raketalari va zenit pushkasi bilan jang qiling.</div>
+      </div>
+    </div>
+    <div class="row"><span class="lbl">QIYINLIK</span>
+      <div id="diffs">
+        <button data-d="0">Yangi askar</button>
+        <button data-d="1" class="sel">Askar</button>
+        <button data-d="2">Qiyin</button>
+        <button data-d="3">Faxriy</button>
+      </div>
+    </div>
+    <div class="row"><span class="lbl">REJIM</span>
+      <div id="spModes" class="opts"><button data-m="waves" class="sel">To'lqinlar</button><button data-m="zombie">☣ Zombi (tun)</button></div>
+    </div>
+    <div class="row"><span class="lbl">XARITA</span>
+      <div id="spMaps" class="opts"><button data-map="town" class="sel">Shaharcha</button><button data-map="big">Katta shahar</button></div>
+    </div>
+    <button id="btnPlay" class="big">JANGGA KIRISH ▶</button>
+    <div class="row small">
+      <button id="btnSettings">⚙ Sozlamalar</button>
+      <button id="btnControls">⌨ Boshqaruv</button>
+    </div>
+    <div id="records"></div>
+  </div>
+  <div id="mpBox">
+    <div class="mpTitle">⚑ TARMOQDA O'YNASH</div>
+    <div class="mpSub">Bitta tarmoqdagi do'stlaringiz bilan o'ynang. Uch rejim: Bayroq, Deathmatch va Zombi (4 kishi birga, qolganlar zombi). Har tug'ilishda klass tanlang. Tank, vertolyot, Kamaz, jip va noyob qurollar bilan!</div>
+    <input id="mpName" maxlength="16" placeholder="Ismingizni yozing" autocomplete="off">
+    <button id="btnCreate" class="mpBtn">＋ XONA YARATISH</button>
+    <div class="mpOr">yoki do'stingiz bergan kod bilan kiring</div>
+    <div class="mpRow"><input id="mpCode" maxlength="4" placeholder="KOD" autocomplete="off"><button id="btnJoin" class="mpBtn">QO'SHILISH ▶</button></div>
+    <div id="mpErr"></div>
+  </div>
+</div>
+
+<div id="lobby" class="screen panelScreen hidden">
+  <div class="panel wide">
+    <h2>TARMOQ XONASI</h2>
+    <div class="codeLbl">Do'stingizga shu kodni bering:</div>
+    <div id="lobbyCode">----</div>
+    <div id="lobbyAddr" class="note"></div>
+    <div class="lobbyRow"><span class="lbl">DAVR</span>
+      <button class="lobbyEra" data-era="historical">1944 Qishki front</button>
+      <button class="lobbyEra" data-era="modern">2026 Cho'l bo'roni</button>
+    </div>
+    <div class="lobbyRow"><span class="lbl">REJIM</span>
+      <button class="lobbyMode" data-mode="flag">⚑ Bayroq</button>
+      <button class="lobbyMode" data-mode="dm">☠ Deathmatch</button>
+      <button class="lobbyMode" data-mode="zombie">☣ Zombi</button>
+    </div>
+    <div class="lobbyRow"><span class="lbl">XARITA</span>
+      <button class="lobbyMap" data-map="town">Shaharcha</button>
+      <button class="lobbyMap" data-map="big">Katta shahar</button>
+    </div>
+    <div class="lbl">O'YINCHILAR</div>
+    <div id="lobbyPlayers"></div>
+    <div class="rules" id="lobbyRules"></div>
+    <div id="lobbyMsg" class="note"></div>
+    <button id="btnLobbyStart" class="big">JANGNI BOSHLASH</button>
+    <button id="btnLobbyLeave">Xonadan chiqish</button>
+  </div>
+</div>
+
+<!-- Klass tanlash: har safar jangga kirishdan oldin (tarmoqda — o'lgandan keyingi 4 soniya ichida) -->
+<div id="classPick" class="hidden">
+  <div class="cpInner">
+    <div id="cpTitle">KLASSNI TANLANG</div>
+    <div id="cpSub"></div>
+    <div id="cpCards"></div>
+    <div id="cpFoot">Barcha klasslarda bir xil: <b>2</b> — to'pponcha · <b>3</b> — pichoq · <b>4</b> — granata (qo'lga olish) · <b>G</b> — granatani darhol otish</div>
+    <button id="cpGo" class="big">JANGGA KIRISH ▶</button>
+  </div>
+</div>
+
+<div id="settings" class="screen panelScreen hidden">
+  <div class="panel">
+    <h2>SOZLAMALAR</h2>
+    <label>Sichqoncha sezgirligi <span id="vSens"></span><input type="range" id="sSens" min="0.2" max="3" step="0.05"></label>
+    <label>Ko'rish burchagi (FOV) <span id="vFov"></span><input type="range" id="sFov" min="60" max="105" step="1"></label>
+    <label>Ovoz balandligi <span id="vVol"></span><input type="range" id="sVol" min="0" max="1" step="0.05"></label>
+    <label>Grafika sifati
+      <select id="sQual"><option value="low">Past (tez)</option><option value="medium">O'rta</option><option value="high">Yuqori</option><option value="ultra">Ultra (kuchli videokarta uchun)</option></select>
+    </label>
+    <div class="note">Grafika sifati keyingi jangda qo'llanadi. Kadr tezligi pasaysa, tasvir aniqligi avtomatik kamayadi.</div>
+    <div class="note" id="gpuInfo"></div>
+    <button class="back">◀ Orqaga</button>
+  </div>
+</div>
+
+<div id="controls" class="screen panelScreen hidden">
+  <div class="panel">
+    <h2>BOSHQARUV</h2>
+    <table>
+      <tr><td>W A S D</td><td>Harakat</td></tr>
+      <tr><td>Sichqoncha</td><td>Nishonga olish</td></tr>
+      <tr><td>Chap tugma</td><td>O'q uzish</td></tr>
+      <tr><td>O'ng tugma</td><td>Mo'ljalga olish: qurolning o'z mo'ljali (kollimator, tirqish-ustun, optika) ekran markaziga keladi</td></tr>
+      <tr><td>Shift</td><td>Yugurish / Snayperda nafasni ushlash</td></tr>
+      <tr><td>Probel</td><td>Sakrash</td></tr>
+      <tr><td>C</td><td>Cho'kkalash (yoqish/o'chirish)</td></tr>
+      <tr><td>R</td><td>Qayta o'qlash</td></tr>
+      <tr><td>Klass</td><td>Har safar jangga kirishdan oldin tanlanadi (tarmoqda — o'lgandan keyingi 4 soniyada, 1–4 tugmalari): Avtomatchi, Injener (PP), Snayper, Shturmchi (drobovik)</td></tr>
+      <tr><td>1 / 2 / 3 / 4</td><td>1 — asosiy qurol · 2 — to'pponcha · 3 — pichoq · 4 — granata (qo'lga olish) · G'ildirak — navbat bilan</td></tr>
+      <tr><td>5</td><td>Noyob qurol (podvaldan topiladi)</td></tr>
+      <tr><td>F</td><td>Transportga o'tirish / chiqish</td></tr>
+      <tr><td>Q</td><td>O'rin tanlash: o'tirishdan oldin ham, transport ichida ham (keyingi bo'sh o'rin) · 1–6 — aniq o'rin</td></tr>
+      <tr><td>Probel (havoda)</td><td>Parashyutni ochish — o'zi ochilmaydi, balanddan yiqilish zarar beradi</td></tr>
+      <tr><td>Hujumchi vertolyot</td><td>W/S/A/D uchish · Probel/Shift balandlik · Chap: pulemyot (qiziydi) · O'ng: raketa (12 ta, 15 s qayta o'qlash)</td></tr>
+      <tr><td>Chinuk</td><td>Transport: 2 uchuvchi, 2 bort o'qchisi, 2 yo'lovchi · orqa rampadan ichiga yurib kirsa bo'ladi</td></tr>
+      <tr><td>Jip / Kvadrotsikl</td><td>W/S gaz/tormoz · A/D burilish</td></tr>
+      <tr><td>Kamaz</td><td>W/S gaz/tormoz · A/D burilish · kabinada 2 o'rin · kuzovga orqadagi zinadan yurib chiqiladi va u yerdan o'z qurolingiz bilan otasiz</td></tr>
+      <tr><td>Tank (og'ir / yengil)</td><td>W/S yurish · A/D burilish · Sichqoncha minora · Chap: pushka · O'ng: pulemyot. Orqasi zaif; yonga zarba gusenitsani uzadi; yonsa yurmaydi</td></tr>
+      <tr><td>G</td><td>Granatani darhol otish (qurolni almashtirmasdan)</td></tr>
+      <tr><td>Granata qo'lda (4)</td><td>Chap tugma — uloqtirish; bosib tursangiz halqa sug'urilgan holda ushlab turiladi (3,4 s da portlaydi!) · O'ng tugma — yaqinga tashlash</td></tr>
+      <tr><td>Pichoq qo'lda (3)</td><td>Chap tugma — tez kesish · O'ng tugma — sanchish (bir zarbada). Pichoq bilan tezroq yugurasiz</td></tr>
+      <tr><td>V</td><td>Piyoda: pichoq zarbasi (qurolni almashtirmasdan) · Transportda: 1-shaxs / 3-shaxs ko'rinishi</td></tr>
+      <tr><td>B</td><td>Ketma-ket o'ldirish mukofoti</td></tr>
+      <tr><td>L</td><td>Fonar (tungi zombi rejimida)</td></tr>
+      <tr><td>O'q tegishi</td><td>Boshga — eng ko'p zarar; tanaga — to'liq; oyoq va qo'lga — 25–30% kamroq. Tananing yonidan o'tgan o'q tegmaydi</td></tr>
+      <tr><td>Zenit pushkasi</td><td>Qalqoni olddan kelgan o'qni to'sadi — to'pchini yon yoki orqadan oling</td></tr>
+      <tr><td>Transportda yo'lovchi</td><td>O'z qurolidan otadi (1-shaxs ko'rinishida): chap tugma — otish, o'ng — mo'ljal, R — o'qlash, g'ildirak — qurol. Bort o'qchisi g'ildirak bilan pulemyot va o'z quroli orasida almashtiradi</td></tr>
+      <tr><td>Zombi rejimi</td><td>Tun, yomg'ir, chaqmoq. A punktidan B → C → D ga boring. Boshida faqat to'pponcha (o'qi tugamaydi) va pichoq; yashiklarda [E] o'qi cheklangan qurollar. Transportda yoqilg'i va o'q-dori cheklangan</td></tr>
+      <tr><td>E</td><td>O'q-dori qutisi / noyob qurolni olish</td></tr>
+      <tr><td>Esc</td><td>Pauza</td></tr>
+    </table>
+    <button class="back">◀ Orqaga</button>
+  </div>
+</div>
+
+<div id="briefing" class="screen hidden">
+  <div class="brief">
+    <div id="briefEra"></div>
+    <div id="briefTitle"></div>
+    <div id="briefText"></div>
+    <div id="briefGo">[ BOSHLASH UCHUN BOSING ]</div>
+  </div>
+</div>
+
+<div id="pause" class="screen panelScreen hidden">
+  <div class="panel">
+    <h2 id="pauseTitle">PAUZA</h2>
+    <button id="btnResume" class="big">Davom etish</button>
+    <button id="btnPauseSettings">⚙ Sozlamalar</button>
+    <button id="btnQuit">Asosiy menyu</button>
+  </div>
+</div>
+
+<div id="end" class="screen panelScreen hidden">
+  <div class="panel wide">
+    <h2 id="endTitle">G'ALABA</h2>
+    <div id="endSub"></div>
+    <div id="endStats"></div>
+    <button id="btnAgain" class="big">Qayta jang</button>
+    <button id="btnMenu">Asosiy menyu</button>
+  </div>
+</div>
+
+<div id="loading" class="hidden">YUKLANMOQDA...</div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,24 @@
+{
+ "barrel_03": {
+  "bin": "barrel_03.bin",
+  "size": [
+   0.6339,
+   0.9305,
+   0.6386
+  ],
+  "parts": [
+   {
+    "off": 0,
+    "v": 1126,
+    "i": 4419,
+    "d": "barrel_03_0_d.jpg",
+    "n": "barrel_03_0_n.jpg",
+    "a": "barrel_03_0_a.jpg",
+    "name": "barrel_03",
+    "alpha": "OPAQUE"
+   }
+  ],
+  "tris": 1473,
+  "ver": "e936c8a1"
+ }
+}

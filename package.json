@@ -1,0 +1,10 @@
+{
+  "name": "zamonlar-jangi",
+  "version": "1.1.0",
+  "private": true,
+  "description": "ZAMONLAR JANGI — brauzerda ishlaydigan 3D jang o'yini (yakka va LAN tarmoq rejimi)",
+  "scripts": {
+    "start": "sh start.sh",
+    "test": "node tests/run.js"
+  }
+}

@@ -1,0 +1,8 @@
+Bu papkadagi modellar Poly Haven (https://polyhaven.com) saytidan olingan va CC0 (jamoat mulki) litsenziyasida tarqatiladi.
+Models in this folder come from Poly Haven (https://polyhaven.com) and are released under CC0 (public domain).
+
+fayl  —  asl nomi (id)  —  mualliflar
+
+barrel_03.bin, barrel_03_0_d.jpg, barrel_03_0_n.jpg, barrel_03_0_a.jpg  —  Barrel 03 (barrel_03)  —  Serhii Khromov
+
+Yangi model qo'shish: python3 -I tools/bakemodel.py assets/models <yuklash papkasi> <id> — keyin js/world.js dagi this.props ro'yxatiga joy qo'shiladi.

@@ -1,0 +1,18 @@
+Bu papkadagi teksturalar Poly Haven (https://polyhaven.com) saytidan olingan va CC0 (jamoat mulki) litsenziyasida tarqatiladi.
+Textures in this folder come from Poly Haven (https://polyhaven.com) and are released under CC0 (public domain).
+
+fayl  —  asl nomi (id)  —  mualliflar
+
+sand_d.jpg, sand_n.jpg  —  Sand 01 (sand_01)  —  Rob Tuytel
+snow_d.jpg, snow_n.jpg  —  Snow 02 (snow_02)  —  Rob Tuytel
+asphalt_d.jpg, asphalt_n.jpg  —  Asphalt 02 (asphalt_02)  —  Rob Tuytel
+cobble_d.jpg, cobble_n.jpg  —  Cobblestone Floor 04 (cobblestone_floor_04)  —  Rob Tuytel
+plaster_d.jpg, plaster_n.jpg  —  Beige Wall 001 (beige_wall_001)  —  Dimitrios Savva, Rico Cilliers
+brick_d.jpg, brick_n.jpg  —  Red Brick 03 (red_brick_03)  —  Rob Tuytel
+concrete_d.jpg, concrete_n.jpg  —  Concrete Wall 008 (concrete_wall_008)  —  Dario Barresi, Charlotte Baglioni
+planks_d.jpg, planks_n.jpg  —  Weathered Brown Planks (weathered_brown_planks)  —  Dimitrios Savva, Rico Cilliers
+grass_d.jpg, grass_n.jpg  —  Withered Grass (withered_grass)  —  Charlotte Baglioni
+dirt_d.jpg, dirt_n.jpg  —  Brown Mud Dry (brown_mud_dry)  —  Rob Tuytel
+
+*_d.jpg — rang (diffuse), *_n.jpg — relyef (normal, OpenGL), 1024 px.
+Papka o'chirilsa, o'yin kodda chizilgan teksturalar bilan ishlayveradi.

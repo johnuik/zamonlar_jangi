@@ -1,0 +1,63 @@
+O'yindagi 3D modellar va ularning mualliflari / 3D models used in the game and their authors
+
+assets/models/chars — askarlar va zombilar (suyakli modellar; harakati o'yinning o'z kodida hisoblanadi)
+  operator.glb  — "Military man" by madtrollstudio — CC BY 3.0 (https://creativecommons.org/licenses/by/3.0/)
+                  https://poly.pizza/m/3AiqeNLKkP (via Poly Pizza)
+  soldier2.glb  — "Solider" by madtrollstudio — CC BY 3.0 (https://creativecommons.org/licenses/by/3.0/)
+                  https://poly.pizza/m/vkQ340pIHi (via Poly Pizza)
+  soviet.glb    — "WW2 Soviet Uniform" by tnnv — CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/)
+                  https://sketchfab.com/models/f85a4ed8c33a43eca1a7caa45f7acf99
+                  O'zgartirilgan: uchburchaklar soni kamaytirilgan, teksturalar JPEG ga o'tkazilgan;
+                  nemis askari — shu modelning kiyim rangi o'zgartirilgan varianti (o'yin kodida).
+  zombie.glb    — "Zombie Walk Test" by oscar_creativo — CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/)
+                  https://sketchfab.com/models/165fd9342c364216bfdd8c2f1102223c
+                  O'zgartirilgan: uchburchaklar soni kamaytirilgan, animatsiya olib tashlangan, material formati yangilangan.
+
+assets/models/veh — transport (hammasi CC BY 4.0, https://creativecommons.org/licenses/by/4.0/; o'yinda o'lchami moslangan, qismlarga ajratilgan)
+  t34.glb       — "Tank T-34" by RomanGurd — https://sketchfab.com/models/01af3ca4a7bf41ebbd5f1986edeb77fd
+  pz4.glb       — "Panzer IV Medium Tank - Toshueyi" by Joanthan To (jonathanto99) — https://sketchfab.com/models/14c74d148326448c8edb5fee81be3894
+  abrams.glb    — "M1 Abrams" by Artem Goyko — https://sketchfab.com/models/2577a4eccbc74b2da6dba5bfd09b7511
+  t90.glb       — "T90" by hate (haters) — https://sketchfab.com/models/8f577602505248f79e2b8a95f24b33fb
+  willys.glb    — "Jeep Willys" by Willy Decarpentrie (skudgee) — https://sketchfab.com/models/a28600c16b9e44bcb160ede0d199180d
+  humvee.glb    — "Low Poly Humvee FREE" by MadTrollStudio — https://sketchfab.com/models/c0e2ddcc4ccf4d49a9303303a6307bcf
+  mi24.glb      — "Mi-24 Hind" by Duane's Mind (duanesmind) — https://sketchfab.com/models/004d68143e1a4df88e136dbc0a05f181
+  chinook.glb   — "Helicopter Low Poly - Chinook CH-47" by Machine Meza (maurib98) — https://sketchfab.com/models/72b5123bda964e9aa5343384734977e2
+  ural.glb      — "Ural 4320" by Brout (davidbroutian) — https://sketchfab.com/models/f953c51a5dbc4a15949f4dcc0905c4e8
+  drone.glb     — "Quadrocopter 2" by yanix — https://sketchfab.com/models/6885c5f1a68148e1b2b3a4f69b8b3d70
+
+assets/models/guns — qo'ldagi qurollar (o'yinda o'lchami va mo'ljal chizig'i moslangan; teksturalar JPEG ga o'tkazilgan)
+  m4a1.glb      — "M4A1 Assault Rifle" by nisu — CC0 — https://opengameart.org/content/m4a1-assault-rifle
+  stg44.glb     — "STG-44" by Arbuzz747 — CC BY 4.0 — https://sketchfab.com/models/fe139cf77b384d3fbf40bef53a6c809c
+  ppsh.glb      — "PPSh-41" by Artem Goyko — CC BY 4.0 — https://sketchfab.com/models/089bdfb09ada407da3e75cfcbe2180fe
+  mp40.glb      — "WW2 German MP40" by Tactical_Beard — CC BY 4.0 — https://sketchfab.com/models/527929dafda34929a1e87031c8ddf689
+  mosin.glb     — "Bolt Action Rifle 7.62" by Mateusz Sadek (Poly Haven) — CC0 — https://polyhaven.com/a/bolt_action_rifle_7_62
+  tt33.glb      — "TT33 Tokarev Pistol" by White-Horse — CC BY 4.0 — https://sketchfab.com/models/e96197a0a9ed46b6aa74757b6ff4c2da
+  knife.glb     — "M9 Knife PBR" by khairul169 — CC0 — https://opengameart.org/content/m9-knife-pbr
+  fg42.glb      — "FG42" by Shorty_Digitan — CC BY 4.0 — https://sketchfab.com/models/d699ac259bd74f70a51125a7e4320f4b
+  m97.glb       — "Winchester M1897 Trench gun" by Anick_Schwartz — CC BY 4.0 — https://sketchfab.com/models/b36e917fc21f411c85b0e6ba6d61b285 (nayzasi olib tashlangan)
+  dbl.glb       — "Double Barrel Shotgun" by Sebastian Kansik (Pepego) — CC BY 4.0 — https://sketchfab.com/models/04741a40f2224cffafc343b0236d5bbe
+  dp28.glb      — "DP28 Light Machine Gun Low-poly PBR" by MaX3Dd — CC BY 4.0 — https://sketchfab.com/models/03978b66f0c646f19e9502634f0ad20a
+  svt40.glb     — "SVT40" by Larkien — CC BY 4.0 — https://sketchfab.com/models/ee10a6e05053422a8e15ff66f5e33f80
+  nagant.glb    — "Nagant M1895 Revolver" by SpatialNeglect (jeandiz) — CC BY 4.0 — https://sketchfab.com/models/d8ce5431c53c4f32af9c82fbd2ffeac6
+  bazooka.glb   — "WW2 US Bazooka" by Tactical_Beard — CC BY 4.0 — https://sketchfab.com/models/6b1d0c8c2f78483d8b398b8d923a8928
+  scarh.glb     — "Low-Poly FN SCAR-H" by notcplkerry — CC BY 4.0 — https://sketchfab.com/models/12bea6cc5949427590725eee7990c2cc
+  vityaz.glb    — "Low-poly PP-19 Vityaz-SN" by veightyfive — CC BY 4.0 — https://sketchfab.com/models/e3ca549bf0134d45b09cd98b8e60454b
+  p90.glb       — "Low-Poly FN P90" by TastyTony — CC BY 4.0 — https://sketchfab.com/models/96b61ebbbf154843b621ebf7f48647fc
+  l118.glb      — "Low-Poly L118A1" by TastyTony — CC BY 4.0 — https://sketchfab.com/models/5e2f001d6e6245bcacf2b1e2de8892f4
+  svd.glb       — "Low-Poly SVD Dragunov" by TastyTony — CC BY 4.0 — https://sketchfab.com/models/fe40c5c2696441bc8696ed042056709e
+  r870.glb      — "Remington 870 Shotgun" by Andrei Milin (milinam2002) — CC BY 4.0 — https://sketchfab.com/models/6db0ad4764d14eee8f063eea3600071b
+  saiga.glb     — "Saiga 12" by German Huskey (migueld1994) — CC BY 4.0 — https://sketchfab.com/models/15b495fd2f9344ff9bd35a77628844d7
+  pkm.glb       — "Low-Poly PKM" by TastyTony — CC BY 4.0 — https://sketchfab.com/models/626082c669c740efa06e03c63b7bc2d9
+  g17.glb       — "Low-Poly G17" by TastyTony — CC BY 4.0 — https://sketchfab.com/models/60efc54ac59e47d18bdff94b2f5144ff (rangi qo'shilgan)
+  deagle.glb    — "Desert Eagle" by ELIZION — CC BY 4.0 — https://sketchfab.com/models/cabde59f5cf24effaf80536e35d04e95
+  rpg7.glb      — "RPG 7 ( Free Model )" by javadbayat — CC BY 4.0 — https://sketchfab.com/models/99c0af8a1803490a86edc48cd3bfc700
+  m82.glb       — "Low-Poly Barrett M82A1" by TastyTony — CC BY 4.0 — https://sketchfab.com/models/9c7027e5a64e40e9ae927adb0872b6d8 (rangi qo'shilgan)
+  ptrd.glb      — "Russian Antitank rifle PTRD-1941, 14.5 mm, WWII" by milhause.cz — CC BY 4.0 — https://sketchfab.com/models/90a24635b1c24a3e947fe97a071fa7f2
+  maxim.glb     — "Machine Gun Maxim" by tomasz0p0 — CC BY 4.0 — https://sketchfab.com/models/c3be4e0b9ddc4297a8356852b21bdc37 (1944 yilgi qo'riqchi pulemyot)
+  dshk.glb      — "dshk" by hensyu_leader — CC BY 4.0 — https://sketchfab.com/models/070de1ca5d664160b3fd489c412f871e (zamonaviy avtomatik turel)
+  ak47.glb      — "AK-47 (Assault rifle)" by quick_loop (so_O) — CC BY 4.0 — https://sketchfab.com/models/46a36e92379341d495fdcd7750a7ebc3
+  (Sketchfab modellari Objaverse 1.0 to'plamidagi nusxasidan olingan; teksturalar 1024 pikselgacha kichraytirilib JPEG ga o'tkazilgan.)
+
+assets/models (bochka) — Poly Haven, CC0 — batafsil: assets/models/LICENSE.txt
+assets/tex (yuzalar) — Poly Haven, CC0 — batafsil: assets/tex/LICENSE.txt
+lib/addons — three.js r160 (GLTFLoader, BufferGeometryUtils, SkeletonUtils), MIT — lib/addons/LICENSE

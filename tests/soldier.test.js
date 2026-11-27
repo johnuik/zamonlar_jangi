@@ -21,10 +21,13 @@ const ok = (name, cond, extra = '') => { if (!cond) fails++; L(`${cond ? '  OK  
     G.T.forEach((s, i) => { s.update = () => {}; s.pos.set((i - 4) * 1.3, 0, 41); s.yaw = Math.PI; s.vel.set(0, 0, 0); s.root.position.copy(s.pos); s.root.rotation.y = s.yaw; });
     return G.T.length; })()`);
   await sleep(400);
-  const parts = await T(`G.T.map(s => { let m = 0, tri = 0; s.root.traverse(o => { if (o.isMesh) { m++; tri += o.geometry.attributes.position.count / 3; } });
-    return [s.type, s.team, !!(s.legL && s.shinL && s.legR && s.shinR && s.upper && s.torso && s.head && s.armsG && s.gun), m, Math.round(tri), +s.muzzleLocal.z.toFixed(2)]; })`);
-  ok('har bir tur bo\'g\'imli model bilan yig\'iladi (oyoq, boldir, tana, bosh, qo\'l, qurol)', parts.length === 9 && parts.every((p) => p[2] && p[3] >= 12 && p[3] <= 40 && p[4] > 1500 && p[4] < 6000 && p[5] > 0.3),
-    parts.map((p) => `${p[0]}:${p[3]} bo'lak/${p[4]} uchb.`).join(' · '));
+  // suyakli model (assets/models/chars) yuklanishini kutamiz: modellar menyu paytida yuklanadi
+  for (let i = 0; i < 40 && !(await T(`G.T.every((s) => !s.charName || s.skin)`)); i++) { await T(`(G.T.forEach((s) => A(s, 0.016, 0, false, 0)), 1)`); await sleep(150); }
+  // kodda qurilgan bo'g'imlar har doim bor (harakat va nishon hisobi shularda); suyakli model bo'lsa — ko'rinadigani faqat model va qurol
+  const parts = await T(`G.T.map(s => { let m = 0, tri = 0, vis = 0; s.root.traverse(o => { if (o.isMesh) { m++; const n = (o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count) / 3; let v = true; for (let x = o; x && x !== s.root; x = x.parent) v = v && x.visible; if (v) { vis++; tri += n; } } });
+    return [s.type, s.team, !!(s.legL && s.shinL && s.legR && s.shinR && s.upper && s.torso && s.head && s.armsG && s.gun), m, Math.round(tri), +s.muzzleLocal.z.toFixed(2), s.skin ? s.skin.name : null, vis]; })`);
+  ok("har bir tur bo'g'imli model bilan yig'iladi (oyoq, boldir, tana, bosh, qo'l, qurol); suyakli model ulangan, ko'rinadigan uchburchaklar me'yorda", parts.length === 9 && parts.every((p) => p[2] && p[3] >= 12 && p[3] <= 40 && p[4] > 1500 && p[4] < 40000 && p[5] > 0.3 && p[6]),
+    parts.map((p) => `${p[0]}:${p[6] || 'kod'} ${p[7]}/${p[3]} bo'lak, ${p[4]} uchb.`).join(' · '));
   // yurish: tizza bukiladi (boldir burchagi o'zgaradi), oyoqlar qarama-qarshi fazada
   const walk = await T(`(() => { const s = G.T[0]; s.crouchAmt = 0; let minL = 9, maxL = -9, opp = 0, maxSw = 0;
     for (let i = 0; i < 80; i++) { A(s, 0.03, 3.5, false, 0); minL = Math.min(minL, s.shinL.rotation.x); maxL = Math.max(maxL, s.shinL.rotation.x); maxSw = Math.max(maxSw, Math.abs(s.legL.rotation.x)); if (Math.sign(s.legL.rotation.x + 0.04) !== Math.sign(s.legR.rotation.x + 0.04)) opp++; }
@@ -43,7 +46,7 @@ const ok = (name, cond, extra = '') => { if (!cond) fails++; L(`${cond ? '  OK  
   ok('cho\'kkalash: bir tizzada (old oyoq tagi va orqa tizza yer sathida)', Math.abs(cr[0] + 0.45) < 0.02 && Math.abs(cr[1]) < 0.09 && Math.abs(cr[2]) < 0.12, JSON.stringify(cr));
   // nishon qutisi: bosh balandligidagi o'q — boshga, ko'krak balandligidagi — tanaga, bosh ustidan — tegmaydi
   const hit = await T(`(() => { const s = G.T[5], V3 = P.pos.constructor, d = new V3(0, 0, 1), o = (y) => new V3(s.pos.x, s.pos.y + y, s.pos.z - 5);
-    const a = s.hitTest(o(1.65), d, 50), b = s.hitTest(o(1.2), d, 50), c = s.hitTest(o(1.95), d, 50); return [a ? a.head : null, b ? b.head : null, c === null]; })()`);
+    const a = s.hitTest(o(1.65 * s.s), d, 50), b = s.hitTest(o(1.2 * s.s), d, 50), c = s.hitTest(o(1.95 * s.s), d, 50); return [a ? a.head : null, b ? b.head : null, c === null]; })()`);
   ok('nishon qutisi modelga mos: bosh / tana / bosh ustidan o\'tadi', hit[0] === true && hit[1] === false && hit[2] === true, JSON.stringify(hit));
   await shot(`soldier_${era}_lineup`);
   // umumiy geometriya: bir xil turdagi ikki askar bittasini ishlatadi; biri o'chirilganda ikkinchisi buzilmaydi

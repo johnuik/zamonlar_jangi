@@ -6,7 +6,8 @@ import * as THREE from '../lib/three.module.js';
 //   2) qurol (ko'rinish modeli) o'sha tasvir ustidan chiziladi
 //   3) bloom — yorqin joylar (olov, chaqnash, quyosh aksi) atrofida yog'du
 //   4) quyosh nurlari (kunduzi, quyosh ko'rinib turganda)
-//   5) ACES ton xaritasi, rang tuzatish, vinyetka, plyonka doni
+//   5) avto-ekspozitsiya: kadrning o'rtacha yorqinligiga qarab "ko'z moslashadi" (uy ichida yorishadi, quyoshga qaraganda xiralashadi)
+//      va ACES ton xaritasi, rang tuzatish, vinyetka, plyonka doni
 //   6) FXAA — qirralarni silliqlash
 // Tashqi kutubxonasiz: hammasi shu faylda (three.js ning o'zi yetarli).
 
@@ -94,11 +95,23 @@ uniform sampler2D tMask; uniform vec2 sun; varying vec2 vUv;
 void main(){
   vec2 d = (sun - vUv) / 28.0 * 0.9; vec2 uv = vUv; float s = 0.0, w = 1.0;
   for (int i = 0; i < 28; i++) { s += texture2D(tMask, uv).r * w; w *= 0.955; uv += d; }
-  gl_FragColor = vec4(vec3(s / 28.0), 1.0);
+  gl_FragColor = vec4(s / 28.0, texture2D(tMask, vUv).r, 0.0, 1.0);
+}`;
+// avto-ekspozitsiya: kichik teksturaning eng mayda mip darajasi — butun kadrning o'rtacha rangi; natija oldingi kadr bilan silliq aralashadi
+const FS_ADAPT = `
+uniform sampler2D tLum; uniform sampler2D tPrev; uniform float k; uniform vec3 ae; varying vec2 vUv;
+void main(){
+  vec3 c = textureLod(tLum, vec2(0.5), 6.0).rgb;
+  float L = dot(max(c, 0.0), vec3(0.2126, 0.7152, 0.0722));
+  float target = clamp(ae.z / max(L, 0.02), ae.x, ae.y);
+  float prev = texture2D(tPrev, vec2(0.5)).r;
+  gl_FragColor = vec4(vec3(mix(prev, target, k)), 1.0);
 }`;
 const FS_TONE = `
+uniform sampler2D tExp; uniform float aeOn;
 uniform sampler2D tColor; uniform sampler2D tBloom; uniform sampler2D tRays; uniform float exposure; uniform float bloomK; uniform float raysK; uniform vec3 raysC;
 uniform float sat; uniform float contrast; uniform vec3 tint; uniform float vig; uniform float grain; uniform float time; uniform vec2 res; varying vec2 vUv;
+uniform float ca; uniform vec3 tintS; uniform vec3 tintH;
 vec3 fit(vec3 v){ vec3 a = v * (v + 0.0245786) - 0.000090537; vec3 b = v * (0.983729 * v + 0.4329510) + 0.238081; return a / b; }
 vec3 aces(vec3 c){
   const mat3 mi = mat3(vec3(0.59719, 0.07600, 0.02840), vec3(0.35458, 0.90834, 0.13383), vec3(0.04823, 0.01566, 0.83777));
@@ -108,18 +121,68 @@ vec3 aces(vec3 c){
 vec3 srgb(vec3 c){ return mix(pow(c, vec3(0.41666)) * 1.055 - vec3(0.055), c * 12.92, vec3(lessThanEqual(c, vec3(0.0031308)))); }
 float hash(vec2 p){ return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
 void main(){
-  vec3 c = texture2D(tColor, vUv).rgb + texture2D(tBloom, vUv).rgb * bloomK + texture2D(tRays, vUv).r * raysC * raysK;
-  c = srgb(aces(max(c, 0.0) * exposure));
+  // linza: kadr chetida ranglar bir oz ajraladi (markazda — yo'q)
+  vec2 q = vUv - 0.5, co = q * dot(q, q) * ca;
+  vec3 c = vec3(texture2D(tColor, vUv + co).r, texture2D(tColor, vUv).g, texture2D(tColor, vUv - co).b);
+  // quyosh nurlari faqat to'siqlar ustiga tushadi: ochiq osmon o'z rangida qoladi (aks holda ko'k osmon pushti tusga kirardi)
+  vec2 ry = texture2D(tRays, vUv).rg;
+  c += texture2D(tBloom, vUv).rgb * bloomK + max(ry.r - ry.g * 0.7, 0.0) * raysC * raysK;
+  c = srgb(aces(max(c, 0.0) * exposure * mix(1.0, texture2D(tExp, vec2(0.5)).r, aeOn)));
   float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
   c = mix(vec3(l), c, sat);
   c = clamp(c, 0.0, 1.0); c = mix(c, c * c * (3.0 - 2.0 * c), contrast - 1.0);   // S-egri: qora va oq joyida qoladi, o'rta tonlar tiniqlashadi
-  c *= tint;
-  vec2 q = vUv - 0.5; c *= 1.0 - vig * smoothstep(0.3, 1.0, length(q) * 1.3);
+  // kino uslubidagi rang: soyalar sovuqroq, yorug' joylar iliqroq
+  c *= tint * mix(tintS, tintH, smoothstep(0.08, 0.72, l));
+  c *= 1.0 - vig * smoothstep(0.3, 1.0, length(q) * 1.3);
   c += (hash(vUv * res + fract(time) * 91.7) - 0.5) * grain;
   gl_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0);
 }`;
+// Yaqin maydon xiraligi (mo'ljalga olganda ko'zga juda yaqin qurol qismlari yumshaydi — nigoh nishonda):
+// 1) yarim o'lchamli nusxa: rang + xiralik darajasi (qurol chuqurligidan; dunyo chizilgach chuqurlik tozalangan — 1.0 bo'lsa qurol emas)
+const FS_DOFPRE = `
+uniform sampler2D tColor; uniform sampler2D tDepth; uniform vec2 texel; uniform vec2 nf; uniform vec2 rng; varying vec2 vUv;
+float coc(vec2 uv){ float d = texture2D(tDepth, uv).x; float z = nf.x * nf.y / (nf.y - d * (nf.y - nf.x)); return (1.0 - smoothstep(rng.x, rng.y, z)) * step(d, 0.9999); }
+void main(){
+  vec4 o = texel.xyxy * vec4(-0.5, -0.5, 0.5, 0.5);
+  vec3 c = (texture2D(tColor, vUv + o.xy).rgb + texture2D(tColor, vUv + o.zy).rgb + texture2D(tColor, vUv + o.xw).rgb + texture2D(tColor, vUv + o.zw).rgb) * 0.25;
+  gl_FragColor = vec4(c, max(max(coc(vUv + o.xy), coc(vUv + o.zy)), max(coc(vUv + o.xw), coc(vUv + o.zw))));
+}`;
+// 2) yoyish (rang va daraja birga — xiralik qurol chetidan tashqariga ham chiqadi, keskin chegara qolmaydi)
+const FS_DOFBLUR = `
+uniform sampler2D tColor; uniform vec2 dir; varying vec2 vUv;
+void main(){
+  vec4 s = texture2D(tColor, vUv) * 0.2270270;
+  s += (texture2D(tColor, vUv + dir * 1.3846154) + texture2D(tColor, vUv - dir * 1.3846154)) * 0.3162162;
+  s += (texture2D(tColor, vUv + dir * 3.2307692) + texture2D(tColor, vUv - dir * 3.2307692)) * 0.0702703;
+  gl_FragColor = s;
+}`;
+// Yakuniy kattalashtirish (ichki aniqlik → ekran aniqligi): bikubik (Catmull-Rom, 5 ta chiziqli namuna) + mahalliy kontrastga moslashuvchi o'tkirlash (CAS g'oyasi).
+// Brauzerning oddiy chiziqli cho'zishiga qaraganda chetlar va mayda tafsilotlar ancha tiniq chiqadi.
+const FS_UPSCALE = `
+uniform sampler2D tColor; uniform vec2 size; uniform float sharp; varying vec2 vUv;
+vec3 cubic(vec2 uv){
+  vec2 p = uv * size, c = floor(p - 0.5) + 0.5, f = p - c;
+  vec2 w0 = f * (-0.5 + f * (1.0 - 0.5 * f)), w1 = 1.0 + f * f * (-2.5 + 1.5 * f), w2 = f * (0.5 + f * (2.0 - 1.5 * f)), w3 = f * f * (-0.5 + 0.5 * f);
+  vec2 w12 = w1 + w2, t0 = (c - 1.0) / size, t3 = (c + 2.0) / size, t12 = (c + w2 / w12) / size;
+  vec4 r = vec4(texture2D(tColor, vec2(t12.x, t0.y)).rgb, 1.0) * (w12.x * w0.y);
+  r += vec4(texture2D(tColor, vec2(t0.x, t12.y)).rgb, 1.0) * (w0.x * w12.y);
+  r += vec4(texture2D(tColor, vec2(t12.x, t12.y)).rgb, 1.0) * (w12.x * w12.y);
+  r += vec4(texture2D(tColor, vec2(t3.x, t12.y)).rgb, 1.0) * (w3.x * w12.y);
+  r += vec4(texture2D(tColor, vec2(t12.x, t3.y)).rgb, 1.0) * (w12.x * w3.y);
+  return r.rgb / r.a;
+}
+void main(){
+  vec3 c = clamp(cubic(vUv), 0.0, 1.0);
+  vec2 px = 1.0 / size;
+  vec3 a = texture2D(tColor, vUv + vec2(0.0, -px.y)).rgb, b = texture2D(tColor, vUv + vec2(-px.x, 0.0)).rgb, d = texture2D(tColor, vUv + vec2(px.x, 0.0)).rgb, e = texture2D(tColor, vUv + vec2(0.0, px.y)).rgb;
+  vec3 mn = min(c, min(min(a, b), min(d, e))), mx = max(c, max(max(a, b), max(d, e)));
+  vec3 amp = sqrt(clamp(min(mn, 1.0 - mx) / max(mx, vec3(1e-4)), 0.0, 1.0));
+  vec3 wgt = amp * (-1.0 / mix(8.0, 5.0, sharp));
+  gl_FragColor = vec4(clamp((c + (a + b + d + e) * wgt) / (1.0 + 4.0 * wgt), 0.0, 1.0), 1.0);
+}`;
 const FS_FXAA = `
 uniform sampler2D tColor; uniform vec2 texel; uniform float sharp; varying vec2 vUv;
+uniform sampler2D tDof; uniform float dofK;
 float luma(vec3 c){ return dot(c, vec3(0.299, 0.587, 0.114)); }
 void main(){
   vec3 m = texture2D(tColor, vUv).rgb;
@@ -135,8 +198,11 @@ void main(){
   float lB = luma(b);
   vec3 c = (lB < lMin || lB > lMax) ? a : b;
   c += (m - (cNW + cNE + cSW + cSE) * 0.25) * sharp * (1.0 - smoothstep(0.04, 0.16, lMax - lMin));
+  if (dofK > 0.0) { vec4 dq = texture2D(tDof, vUv); c = mix(c, dq.rgb, smoothstep(0.0, 0.5, dq.a) * dofK); }
   gl_FragColor = vec4(c, 1.0);
 }`;
+
+const DOF_RANGE = [0.07, 0.25];   // shu masofadan yaqini to'liq xira … shundan uzog'i tiniq (metr)
 
 export class Post {
   constructor(renderer) {
@@ -153,27 +219,39 @@ export class Post {
       up: mk(FS_UP, { tLow: T(), tHigh: T(), texel: V2() }),
       mask: mk(FS_RAYMASK, { tDepth: T(), sun: V2(), aspect: { value: 1 } }),
       rays: mk(FS_RAYS, { tMask: T(), sun: V2() }),
-      tone: mk(FS_TONE, { tColor: T(), tBloom: T(), tRays: T(), exposure: { value: 1 }, bloomK: { value: 0.1 }, raysK: { value: 0 }, raysC: { value: new THREE.Color(1, 0.9, 0.7) },
-        sat: { value: 1 }, contrast: { value: 1 }, tint: { value: new THREE.Color(1, 1, 1) }, vig: { value: 0.25 }, grain: { value: 0.02 }, time: { value: 0 }, res: V2() }),
-      fxaa: mk(FS_FXAA, { tColor: T(), texel: V2(), sharp: { value: 0.35 } }),
+      adapt: mk(FS_ADAPT, { tLum: T(), tPrev: T(), k: { value: 1 }, ae: { value: new THREE.Vector3(1, 1, 0.5) } }),
+      tone: mk(FS_TONE, { tExp: T(), aeOn: { value: 0 }, tColor: T(), tBloom: T(), tRays: T(), exposure: { value: 1 }, bloomK: { value: 0.1 }, raysK: { value: 0 }, raysC: { value: new THREE.Color(1, 0.9, 0.7) },
+        sat: { value: 1 }, contrast: { value: 1 }, tint: { value: new THREE.Color(1, 1, 1) }, vig: { value: 0.25 }, grain: { value: 0.02 }, time: { value: 0 }, res: V2(),
+        ca: { value: 0 }, tintS: { value: new THREE.Color(1, 1, 1) }, tintH: { value: new THREE.Color(1, 1, 1) } }),
+      dofpre: mk(FS_DOFPRE, { tColor: T(), tDepth: T(), texel: V2(), nf: V2(), rng: V2() }),
+      dofblur: mk(FS_DOFBLUR, { tColor: T(), dir: V2() }),
+      fxaa: mk(FS_FXAA, { tColor: T(), texel: V2(), sharp: { value: 0.35 }, tDof: T(), dofK: { value: 0 } }),
+      upscale: mk(FS_UPSCALE, { tColor: T(), size: V2(), sharp: { value: 0.75 } }),
     };
     this.m.ssao.defines = { NS: 10 };
     // AO sahna rangiga ko'paytiriladi: natija = sahna * ao
     Object.assign(this.m.aomul, { blending: THREE.CustomBlending, blendEquation: THREE.AddEquation, blendSrc: THREE.DstColorFactor, blendDst: THREE.ZeroFactor });
     this.black = new THREE.DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1); this.black.needsUpdate = true;
-    this._sun = new THREE.Vector3(); this._size = new THREE.Vector2();
-    this.rt = null;
+    this._sun = new THREE.Vector3(); this._size = new THREE.Vector2(); this._one = new THREE.Color(1, 1, 1);
+    this.rt = null; this.expI = 0; this.expInit = true; this.lastT = 0;
   }
 
   // level: 'off' (to'g'ridan-to'g'ri ekranga), 'medium' (bloom, ton, FXAA), 'high' (+ SSAO, quyosh nurlari), 'ultra' (+ ko'proq namuna)
-  setLevel(level) {
+  // samples — MSAA namunalari (core.js: msaaFor); berilmasa — o'rta: 2, yuqori/ultra: 4
+  setLevel(level, samples) {
     if (level === this.level) return;
     this.level = level;
-    const ns = level === 'ultra' ? 16 : 10, smp = level === 'medium' ? 2 : 4;
+    const ns = level === 'ultra' ? 16 : 10, smp = samples ?? (level === 'medium' ? 2 : 4);
     if (this.m.ssao.defines.NS !== ns) { this.m.ssao.defines.NS = ns; this.m.ssao.needsUpdate = true; }
     if (smp !== this.samples) { this.samples = smp; this.dispose(); }
   }
   get enabled() { return this.level !== 'off'; }
+  // Sinov va sozlash uchun: joriy avto-ekspozitsiya ko'paytuvchisi (yoqilmagan bo'lsa — 1)
+  readExposure() {
+    if (!this.rt) return 1;
+    const b = new Uint16Array(4);
+    try { this.r.readRenderTargetPixels(this.rt.exp[this.expI], 0, 0, 1, 1, b); return +THREE.DataUtils.fromHalfFloat(b[0]).toFixed(3); } catch (e) { return -1; }
+  }
 
   dispose() { if (!this.rt) return; for (const k in this.rt) { const t = this.rt[k]; if (Array.isArray(t)) t.forEach((x) => x.dispose()); else t.dispose(); } this.rt = null; }
   alloc(w, h) {
@@ -192,6 +270,14 @@ export class Post {
     rt.mask = mkRT(w / 4, h / 4, { type: THREE.UnsignedByteType, depthBuffer: false });
     rt.rays = mkRT(w / 4, h / 4, { type: THREE.UnsignedByteType, depthBuffer: false });
     rt.ldr = mkRT(w, h, { type: THREE.UnsignedByteType, depthBuffer: false });
+    rt.aa = mkRT(w, h, { type: THREE.UnsignedByteType, depthBuffer: false });   // FXAA natijasi (ichki aniqlik ekrannikidan farq qilganda — yakuniy kattalashtirish uchun)
+    // (yuqori aniqlikdagi ekranda chorak o'lcham — xiralik ekranda bir xil kattalikda ko'rinadi)
+    const ds = (this.dofDiv = h > 1250 ? 4 : 2);
+    rt.dofA = mkRT(w / ds, h / ds, { type: THREE.UnsignedByteType, depthBuffer: false }); rt.dofB = mkRT(w / ds, h / ds, { type: THREE.UnsignedByteType, depthBuffer: false });
+    // avto-ekspozitsiya: 64×64 (mip zanjiri bilan — eng maydasi kadrning o'rtacha rangi) va ikkita 1×1 (joriy / oldingi qiymat)
+    rt.lum = mkRT(64, 64, { depthBuffer: false, minFilter: THREE.LinearMipmapLinearFilter, generateMipmaps: true });
+    rt.exp = [mkRT(1, 1, { depthBuffer: false, minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter }), mkRT(1, 1, { depthBuffer: false, minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter })];
+    this.expInit = true;
   }
   pass(mat, target) {
     this.quad.material = mat;
@@ -199,10 +285,13 @@ export class Post {
     this.r.render(this.scene, this.cam);
   }
 
-  // o: { scene, camera, gunScene, gunCamera, sunDir (Vector3 yoki null), grade: { exposure, sat, contrast, tint, bloom, rays, raysC, vig, grain, ao }, time }
+  // o: { scene, camera, gunScene, gunCamera, sunDir (Vector3 yoki null), grade: { exposure, sat, contrast, tint, tintS, tintH, ca, bloom, rays, raysC, vig, grain, ao }, time,
+  //      dof (0..1 — yaqin maydon xiraligi kuchi), dofRange: [to'liq xira masofa, tiniq masofa] (metr, qurol kamerasidan) }
   render(o) {
-    const r = this.r, size = r.getDrawingBufferSize(this._size);
-    if (!this.rt || size.x !== this.w || size.y !== this.h) this.alloc(size.x, size.y);
+    // ekran (chiqish) o'lchami va ichki o'lcham: o.scale — ichki aniqlikning ekrannikiga nisbati (1 — bir xil; <1 — tezlik uchun pastroq; >1 — ortiqcha namunali)
+    const r = this.r, size = r.getDrawingBufferSize(this._size), ow = size.x, oh = size.y, sc = Math.max(0.3, Math.min(2, o.scale || 1));
+    const iw = Math.abs(sc - 1) < 0.01 ? ow : Math.max(2, Math.round(ow * sc)), ih = Math.abs(sc - 1) < 0.01 ? oh : Math.max(2, Math.round(oh * sc));
+    if (!this.rt || iw !== this.w || ih !== this.h) this.alloc(iw, ih);
     const rt = this.rt, m = this.m, w = this.w, h = this.h, high = this.level === 'high' || this.level === 'ultra', g = o.grade || {};
     // 1) sahna → HDR (silliqlangan qirralar bilan)
     r.setRenderTarget(rt.scene); r.clear();
@@ -233,6 +322,18 @@ export class Post {
     }
     // 4) qurol (ko'rinish modeli) — dunyo ustidan, o'sha nishonga
     if (o.gunScene) { r.setRenderTarget(rt.scene); r.clearDepth(); r.render(o.gunScene, o.gunCamera); }
+    // 4b) avto-ekspozitsiya: kadrning o'rtacha yorqinligidan yangi qiymat (bir-ikki soniyada moslashadi)
+    const ae = g.ae || null, nowT = performance.now(), dtE = Math.min(0.1, Math.max(0.001, (nowT - this.lastT) / 1000));
+    this.lastT = nowT;
+    if (ae) {
+      m.down.uniforms.tColor.value = rt.scene.texture; m.down.uniforms.texel.value.set(1 / w, 1 / h);
+      this.pass(m.down, rt.lum);
+      const ua = m.adapt.uniforms, prev = rt.exp[this.expI], next = rt.exp[1 - this.expI];
+      ua.tLum.value = rt.lum.texture; ua.tPrev.value = prev.texture; ua.ae.value.set(ae[0], ae[1], ae[2]);
+      ua.k.value = this.expInit ? 1 : 1 - Math.exp(-dtE * 1.3);
+      this.pass(m.adapt, next);
+      this.expI = 1 - this.expI; this.expInit = false;
+    }
     // 5) bloom: yorqin joylar atrofida yog'du
     m.bright.uniforms.tColor.value = rt.scene.texture; m.bright.uniforms.texel.value.set(1 / w, 1 / h);
     this.pass(m.bright, rt.down[0]);
@@ -241,13 +342,33 @@ export class Post {
     for (let i = rt.up.length - 1; i >= 0; i--) { m.up.uniforms.tLow.value = low.texture; m.up.uniforms.tHigh.value = rt.down[i].texture; m.up.uniforms.texel.value.set(1 / low.width, 1 / low.height); this.pass(m.up, rt.up[i]); low = rt.up[i]; }
     // 6) ton, rang, vinyetka, don → LDR
     const u = m.tone.uniforms;
+    u.tExp.value = ae ? rt.exp[this.expI].texture : this.black; u.aeOn.value = ae ? 1 : 0;
     u.tColor.value = rt.scene.texture; u.tBloom.value = rt.up[0].texture; u.tRays.value = raysK > 0 ? rt.rays.texture : this.black;
     u.exposure.value = g.exposure ?? 1; u.bloomK.value = g.bloom ?? 0.1; u.raysK.value = raysK; if (g.raysC) u.raysC.value.copy(g.raysC);
     u.sat.value = g.sat ?? 1; u.contrast.value = g.contrast ?? 1; if (g.tint) u.tint.value.copy(g.tint); u.vig.value = g.vig ?? 0.25; u.grain.value = g.grain ?? 0.02;
     u.time.value = o.time || 0; u.res.value.set(w, h);
+    u.ca.value = g.ca ?? 0; u.tintS.value.copy(g.tintS || this._one); u.tintH.value.copy(g.tintH || this._one);
     this.pass(m.tone, rt.ldr);
-    // 7) FXAA → ekran
-    m.fxaa.uniforms.tColor.value = rt.ldr.texture; m.fxaa.uniforms.texel.value.set(1 / w, 1 / h);
-    this.pass(m.fxaa, null);
+    // 6b) yaqin maydon xiraligi (faqat yuqori sifatda va qurol chizilganda)
+    let dofK = 0;
+    if (high && o.gunScene && (o.dof || 0) > 0.01) {
+      const ud = m.dofpre.uniforms, rg = o.dofRange || DOF_RANGE;
+      ud.tColor.value = rt.ldr.texture; ud.tDepth.value = rt.scene.depthTexture; ud.texel.value.set(this.dofDiv / 2 / w, this.dofDiv / 2 / h);
+      ud.nf.value.set(o.gunCamera.near, o.gunCamera.far); ud.rng.value.set(rg[0], rg[1]);
+      this.pass(m.dofpre, rt.dofA);
+      const ub = m.dofblur.uniforms, tx = 1 / rt.dofA.width, ty = 1 / rt.dofA.height;
+      for (let k = 1; k <= 2; k++) {
+        ub.tColor.value = rt.dofA.texture; ub.dir.value.set(tx * k, 0); this.pass(m.dofblur, rt.dofB);
+        ub.tColor.value = rt.dofB.texture; ub.dir.value.set(0, ty * k); this.pass(m.dofblur, rt.dofA);
+      }
+      dofK = Math.min(1, o.dof);
+    }
+    m.fxaa.uniforms.tDof.value = dofK > 0 ? rt.dofA.texture : this.black; m.fxaa.uniforms.dofK.value = dofK;
+    // 7) FXAA → ekran (ichki aniqlik ekrannikidan farq qilsa: avval oraliq tasvirga, so'ng o'tkirlashtiruvchi kattalashtirish bilan ekranga)
+    const same = w === ow && h === oh;
+    m.fxaa.uniforms.tColor.value = rt.ldr.texture; m.fxaa.uniforms.texel.value.set(1 / w, 1 / h); m.fxaa.uniforms.sharp.value = same ? 0.45 : 0.2;
+    this.pass(m.fxaa, same ? null : rt.aa);
+    if (!same) { const uu = m.upscale.uniforms; uu.tColor.value = rt.aa.texture; uu.size.value.set(w, h); uu.sharp.value = sc < 1 ? 0.6 : 0.25; this.pass(m.upscale, null); }
+    this.outW = ow; this.outH = oh;
   }
 }

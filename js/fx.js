@@ -5,10 +5,11 @@ attribute float psize; attribute float palpha; attribute vec3 pcolor;
 uniform float uScale; varying vec3 vC; varying float vA;
 void main(){ vC = pcolor; vA = palpha; vec4 mv = modelViewMatrix * vec4(position, 1.0);
   gl_PointSize = psize * uScale / max(0.1, -mv.z); gl_Position = projectionMatrix * mv; }`;
+// uLight — atrof yorug'ligi: tutun va chang shu rangga ko'paytiriladi (tunda qorayadi, chaqmoqda yorishadi); pastki yarmi biroz to'qroq — hajm hissi
 const FS = `
-varying vec3 vC; varying float vA; uniform float uSoft;
+varying vec3 vC; varying float vA; uniform float uSoft; uniform vec3 uLight;
 void main(){ vec2 c = gl_PointCoord - 0.5; float d = length(c); if (d > 0.5) discard;
-  float a = vA * pow(1.0 - d * 2.0, uSoft); gl_FragColor = vec4(vC, a); }`;
+  float a = vA * pow(1.0 - d * 2.0, uSoft); gl_FragColor = vec4(vC * uLight * (1.0 - c.y * 0.35), a); }`;
 
 class Particles {
   constructor(scene, max, additive, soft) {
@@ -23,7 +24,7 @@ class Particles {
     g.setAttribute('position', this.aPos); g.setAttribute('pcolor', this.aCol);
     g.setAttribute('psize', this.aSize); g.setAttribute('palpha', this.aAlpha);
     this.mat = new THREE.ShaderMaterial({
-      uniforms: { uScale: { value: 500 }, uSoft: { value: soft } },
+      uniforms: { uScale: { value: 500 }, uSoft: { value: soft }, uLight: { value: new THREE.Color(1, 1, 1) } },
       vertexShader: VS, fragmentShader: FS, transparent: true, depthWrite: false,
       blending: additive ? THREE.AdditiveBlending : THREE.NormalBlending,
     });
@@ -130,6 +131,35 @@ export class FX {
     this.fi = 0;
 
     this.dustColor = era === 'historical' ? [0.88, 0.9, 0.92] : [0.78, 0.66, 0.48];
+
+    // Portlash to'lqini: yer bo'ylab tez kengayib so'nadigan halqa
+    this.rings = [];
+    const rg = new THREE.RingGeometry(0.82, 1, 40);
+    for (let i = 0; i < 4; i++) {
+      const m = new THREE.Mesh(rg, new THREE.MeshBasicMaterial({ color: 0xffd9a8, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false }));
+      m.rotation.x = -Math.PI / 2; m.visible = false; m.frustumCulled = false; scene.add(m);
+      this.rings.push({ m, t: 0, s: 1 });
+    }
+    this.ri = 0;
+
+    // Yerda qoladigan gilzalar (bitta chizish chaqiruvi): uchib tushadi, bir sakrab to'xtaydi, eng eskisi o'rniga yangisi tushadi
+    const NC = 72, cg = new THREE.CylinderGeometry(0.011, 0.011, 0.045, 6);
+    this.cas = new THREE.InstancedMesh(cg, new THREE.MeshStandardMaterial({ color: 0xc9a13b, roughness: 0.35, metalness: 0.9 }), NC);
+    this.cas.frustumCulled = false; this.cas.castShadow = false; this.cas.count = NC;
+    this.casD = Array.from({ length: NC }, () => ({ p: new THREE.Vector3(0, -99, 0), v: new THREE.Vector3(), g: 0, live: false, rx: 0, ry: 0, rz: 0 }));
+    this.casI = 0; this._cm = new THREE.Matrix4(); this._cq = new THREE.Quaternion(); this._ce = new THREE.Euler(); this._cs = new THREE.Vector3(1, 1, 1);
+    for (let i = 0; i < NC; i++) this.cas.setMatrixAt(i, this._cm.makeTranslation(0, -99, 0));
+    scene.add(this.cas);
+  }
+
+  // Atrof yorug'ligi (kunduzi 1; tunda qorong'i, chaqmoqda yorishadi)
+  setLight(r, g, b) { this.norm.mat.uniforms.uLight.value.setRGB(r, g, b); }
+  // Gilza: p — chiqqan joyi, v — tezligi, groundY — tushadigan yer balandligi
+  casing(p, v, groundY) {
+    const i = this.casI; this.casI = (i + 1) % this.casD.length;
+    const c = this.casD[i];
+    c.p.copy(p); c.v.copy(v); c.g = groundY + 0.012; c.live = true; c.b = 0;
+    c.rx = Math.random() * 6; c.ry = Math.random() * 6; c.rz = Math.random() * 6;
   }
 
   setScale(camera, height) {
@@ -197,6 +227,14 @@ export class FX {
 
   explosion(p, scale = 1) {
     this.flash(new THREE.Vector3(p.x, p.y + 1.5, p.z), 0xff9a40, 260 * scale, 0.45, 30);
+    // zarba to'lqini halqasi va bir lahzalik yorqin o'zak
+    { const r = this.rings[this.ri]; this.ri = (this.ri + 1) % this.rings.length; r.m.position.set(p.x, Math.max(p.y, 0) + 0.15, p.z); r.t = 0.0001; r.s = scale; r.m.visible = true; }
+    { const f = this.flashes[this.fi]; this.fi = (this.fi + 1) % this.flashes.length; f.s.position.set(p.x, p.y + 0.8, p.z); f.s.visible = true; f.t = 0.09; const s = 7.5 * scale; f.s.scale.set(s, s, s); }
+    // yer bo'ylab tarqaladigan chang halqasi
+    for (let i = 0; i < 26 * scale; i++) {
+      const a = Math.random() * Math.PI * 2, sp = 7 + Math.random() * 9, dc = this.dustColor;
+      this.norm.emit(p.x + Math.cos(a) * 0.6, Math.max(p.y, 0) + 0.25, p.z + Math.sin(a) * 0.6, Math.cos(a) * sp, 0.6 + Math.random(), Math.sin(a) * sp, 1.3 + Math.random() * 0.9, 0.9 * scale, 2.6, dc[0] * 0.8, dc[1] * 0.78, dc[2] * 0.74, 0.34, 0.4, 2.6);
+    }
     for (let i = 0; i < 45 * scale; i++) {
       const a = Math.random() * Math.PI * 2, u = Math.random() * 0.9 + 0.1, sp = 6 + Math.random() * 16;
       this.add.emit(p.x, p.y + 0.3, p.z, Math.cos(a) * sp * (1 - u * 0.5), u * sp, Math.sin(a) * sp * (1 - u * 0.5), 0.5 + Math.random() * 0.7, 0.07, 0, 1, 0.7, 0.3, 1, 14, 1.2);
@@ -247,6 +285,29 @@ export class FX {
       if (!f.s.visible) continue;
       f.t -= dt; if (f.t <= 0) f.s.visible = false;
     }
+    for (const r of this.rings) {
+      if (r.t <= 0) continue;
+      r.t += dt;
+      const k = r.t / 0.42;
+      if (k >= 1) { r.t = 0; r.m.visible = false; continue; }
+      const s = (1 + k * 15) * r.s; r.m.scale.set(s, s, s); r.m.material.opacity = (1 - k) * (1 - k) * 0.55;
+    }
+    // gilzalar: tortishish, bitta sakrash, so'ng yerda yotadi
+    let moved = false;
+    for (let i = 0; i < this.casD.length; i++) {
+      const c = this.casD[i];
+      if (!c.live) continue;
+      moved = true;
+      c.v.y -= 14 * dt; c.p.addScaledVector(c.v, dt);
+      c.rx += dt * 14; c.rz += dt * 9;
+      if (c.p.y <= c.g) {
+        c.p.y = c.g;
+        if (c.b < 1 && c.v.y < -1.2) { c.b++; c.v.y *= -0.32; c.v.x *= 0.45; c.v.z *= 0.45; }
+        else { c.live = false; c.rx = Math.PI / 2; c.rz = 0; }   // yerda yonboshlab yotadi
+      }
+      this.cas.setMatrixAt(i, this._cm.compose(c.p, this._cq.setFromEuler(this._ce.set(c.rx, c.ry, c.rz)), this._cs));
+    }
+    if (moved) this.cas.instanceMatrix.needsUpdate = true;
   }
 }
 

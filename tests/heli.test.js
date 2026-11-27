@@ -159,7 +159,7 @@ async function multi() {
   await ev(`(() => { const G = window.__G, D = window.__dbg, p = D.player; G.recoilAcc = 0; p.yaw = Math.PI / 4; p.pitch = 0.021; G.fireT = 0; D.tryFire(); D.mouse.R = false; return 1; })()`);
   await sleep(700);
   const k1 = A.got('kill');
-  ok("snayper: oynadan birinchi o'q uchuvchini yaraladi (o'ldirmadi)", kHalf === 0 && hpHalf <= 35 && hpHalf >= 25, 'jon=' + hpHalf);
+  ok("snayper (92 zarar): oynadan birinchi o'q uchuvchini og'ir yaraladi (o'ldirmadi)", kHalf === 0 && hpHalf <= 12 && hpHalf >= 4, 'jon=' + hpHalf);
   ok("oynaga otilgan ikkinchi o'q uchuvchini o'ldirdi, vertolyot shikastlanmadi", k1.length === 1 && k1[0].victim === B.id && k1[0].killer === cid() && st().v[0].hp === 900 && st().v[0].al && !st().v[0].s[0], JSON.stringify(k1) + ' heli hp=' + st().v[0].hp);
   L('  chrome killfeed:', await ev(`document.getElementById('killfeed').innerText.replace(/\\n/g,' | ')`));
 

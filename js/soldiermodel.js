@@ -1,5 +1,8 @@
 import * as THREE from '../lib/three.module.js';
-import { hook } from './gfx.js';
+import { CHAR_BULK, CHAR_K } from './shared.mjs';
+import { hook, rbox } from './gfx.js';
+import { attachChar, charFor, poseChar } from './charskin.js';
+import { tpGunGeo, tpModelFor } from './gunskin.js';
 
 // ================= ASKAR MODELI =================
 // Tana bo'g'imli qismlardan iborat: son + boldir (tizza), tos, ko'krak (egiladi), bosh (buriladi), qo'llar + qurol (ko'tariladi/tushadi).
@@ -44,11 +47,16 @@ class Part {
   }
   box(key, w, h, d, x, y, z, rx = 0, ry = 0, rz = 0) {
     _m.compose(_p.set(x, y, z), _q.setFromEuler(_e.set(rx, ry, rz)), ONE);
-    this.add(new THREE.BoxGeometry(w, h, d), key);
+    this.add(rbox(w, h, d, Math.min(0.018, Math.min(w, h, d) * 0.25), 0.06), key);   // yirik anjom va poyabzal qirralari yumaloqlangan (mayda detallar — oddiy quti: uchburchaklar soni tejaladi)
   }
   // silindr (o'qi y bo'yicha; rx/rz bilan yotqiziladi)
   cyl(key, rt, rb, len, x, y, z, rx = 0, ry = 0, rz = 0, seg = 10) {
     _m.compose(_p.set(x, y, z), _q.setFromEuler(_e.set(rx, ry, rz)), ONE);
+    this.add(new THREE.CylinderGeometry(rt, rb, len, seg), key);
+  }
+  // oval kesimli (yassilangan) toraygan silindr — tana va tos uchun: quti o'rniga yumaloq gavda
+  ecyl(key, rt, rb, len, x, y, z, sx = 1, sz = 1, seg = 16) {
+    _m.compose(_p.set(x, y, z), _q.identity(), _s.set(sx, 1, sz));
     this.add(new THREE.CylinderGeometry(rt, rb, len, seg), key);
   }
   sph(key, r, x, y, z, sx = 1, sy = 1, sz = 1, seg = 10) {
@@ -262,8 +270,8 @@ function buildGeo(era, team, type, variant) {
 
   // --- Tos va kamar anjomlari ---
   const hp = new Part(0, 0, 0);
-  hp.box('pants', 0.35, 0.19, 0.21, 0, 0.965, 0); hp.sph('pants', 0.11, 0.09, 0.93, -0.035, 1, 1, 1, 8); hp.sph('pants', 0.11, -0.09, 0.93, -0.035, 1, 1, 1, 8);
-  if (H) hp.box('uni', 0.385, 0.17, 0.245, 0, 0.985, 0);                                          // kitel/gimnastyorka etagi
+  hp.ecyl('pants', 0.178, 0.17, 0.19, 0, 0.965, 0, 1, 0.61); hp.sph('pants', 0.11, 0.09, 0.93, -0.035, 1, 1, 1, 8); hp.sph('pants', 0.11, -0.09, 0.93, -0.035, 1, 1, 1, 8);
+  if (H) hp.ecyl('uni', 0.188, 0.2, 0.17, 0, 0.985, 0, 1, 0.63);                                          // kitel/gimnastyorka etagi
   hp.box('gear', 0.365 + (H ? 0.03 : 0), 0.05, 0.225 + (H ? 0.03 : 0), 0, WAIST_Y, 0);
   hp.box(H ? 'brass' : 'dark', 0.05, 0.042, 0.012, 0, WAIST_Y, H ? 0.13 : 0.112);
   if (L.kit === 'german') {
@@ -291,9 +299,9 @@ function buildGeo(era, team, type, variant) {
   // --- Tana (bel atrofida egiladi). Ko'krak biroz yonlab turadi: chap yelka oldinda — qurolni ikki qo'llab ushlash uchun ---
   const BL = -0.5, tr = new Part(0, WAIST_Y, 0);
   tr.turn(BL * 0.5);
-  tr.box('uni', 0.335, 0.2, 0.2, 0, 1.165, 0);
+  tr.ecyl('uni', 0.176, 0.17, 0.2, 0, 1.165, 0, 1, 0.6);                                           // qorin (oval kesim)
   tr.turn(BL);
-  tr.box('uni', 0.395, 0.25, 0.225, 0, 1.335, 0.004); tr.box('uni', 0.41, 0.07, 0.2, 0, 1.44, 0);
+  tr.ecyl('uni', 0.204, 0.18, 0.25, 0, 1.335, 0.004, 1, 0.585); tr.ecyl('uni', 0.16, 0.204, 0.075, 0, 1.4425, 0, 1, 0.52);   // ko'krak va yelka qiyaligi
   tr.sph('uni', 0.078, 0.2, SH_Y, 0, 1, 1, 1, 8); tr.sph('uni', 0.078, -0.2, SH_Y, 0, 1, 1, 1, 8);
   tr.seg('uni', V(0.07, 1.485, -0.01), V(0.2, 1.465, 0), 0.05, 0.05, 6); tr.seg('uni', V(-0.07, 1.485, -0.01), V(-0.2, 1.465, 0), 0.05, 0.05, 6);   // trapetsiya
   if (H) {
@@ -434,7 +442,8 @@ function buildGeo(era, team, type, variant) {
   }
   ar.box(hk, 0.07, 0.078, 0.08, HR.x, HR.y - 0.012, HR.z); ar.box(hk, 0.078, 0.06, 0.085, Lf.H.x, Lf.H.y, Lf.H.z);
   out.arms = ar.build();
-  out.meta = { O: [O.x, O.y, O.z], muzzle: [O.x, O.y + 0.01, O.z + gm.muzzle], glint: gm.glint ? [O.x + gm.glint[0], O.y + gm.glint[1], O.z + gm.glint[2]] : null, pose: gm.pose };
+  out.meta = { O: [O.x, O.y, O.z], muzzle: [O.x, O.y + 0.01, O.z + gm.muzzle], glint: gm.glint ? [O.x + gm.glint[0], O.y + gm.glint[1], O.z + gm.glint[2]] : null, pose: gm.pose,
+    hr: [HR.x, HR.y - SH_Y, HR.z], hl: [HLt.x, HLt.y - SH_Y, HLt.z] };   // qo'llar ushlaydigan nuqtalar (qo'l guruhi koordinatasida) — suyakli model IK si uchun
   cache.set(key, out);
   return out;
 }
@@ -475,10 +484,30 @@ export function makeSoldierModel(s, era, team, type) {
   s.hipFire = M.pose === 'hip'; s.zombie = !!L.zombie;
   s.ready = 1; s.aimPitch = 0; s.lookT = Math.random() * 10;
   // bo'y va gavda biroz farq qiladi (tarmoqdagi o'yinchilar bundan mustasno — ularning nishon qutisi aniq bo'lishi kerak)
-  s.build = team === 'remote' ? 1 : 0.95 + Math.random() * 0.12;
-  root.scale.set(s.s * s.build, s.s, s.s * s.build);
+  s.build = (team === 'remote' ? 1 : 0.95 + Math.random() * 0.12) * CHAR_BULK;
+  root.scale.set(s.s * s.build, s.s, s.s * s.build); s.drawS = s.s;
+  // suyakli model (yuklangan bo'lsa; aks holda keyinroq — animatsiya paytida — ulanadi)
+  s.skin = null; s.charName = charFor(era, team, type); s.handPts = [V(M.hr[0], M.hr[1], M.hr[2]), V(M.hl[0], M.hl[1], M.hl[2])];
+  s.root = root; skinUp(s);
+  // qo'ldagi qurol: haqiqiy model (yuklangan bo'lsa — hozir, aks holda keyinroq) — kod quroli o'rnida
+  const tpDef = tpModelFor(era, L.gun);
+  if (tpDef) { if (!G.gunBox) { G.gunBox = new THREE.Box3(); for (const k in G.gun) { G.gun[k].computeBoundingBox(); G.gunBox.union(G.gun[k].boundingBox); } }
+    s.tp = { def: tpDef, key: L.gun, box: G.gunBox, my: M.muzzle[1] - M.O[1], done: false }; tpUp(s); }
   return root;
 }
+function tpUp(s) {
+  const T = s.tp; if (!T || T.done) return;
+  const g = tpGunGeo(T.def, T.key, T.box, T.my);
+  if (g === false) { T.done = true; return; }
+  if (!g) return;
+  for (const c of s.gun.children) if (c.isMesh) c.visible = false;
+  const m = new THREE.Mesh(g, commonMat()); m.castShadow = true; s.gun.add(m); T.done = true;
+}
+
+// suyakli modelni ulash (model hali yuklanmagan bo'lsa — keyingi kadrlarda qayta uriniladi)
+function skinUp(s) { if (!s.skin && s.charName && s.root) attachChar(s, s.charName, s.handPts[0], s.handPts[1]); }
+// bo'g'im burchaklari tayyor — suyakli modelga ko'chiriladi
+function skinPose(s) { if (!s.skin) skinUp(s); if (s.skin) poseChar(s); if (s.tp && !s.tp.done) tpUp(s); }
 
 // ---------- Animatsiya ----------
 // sp — gorizontal tezlik; aiming — nishonga olayaptimi (aks holda qurol pastga tushirilgan); pitch — nishonning balandlik burchagi
@@ -494,6 +523,9 @@ export function animateSoldier(s, dt, sp, aiming, pitch) {
   s.legR.rotation.x = -sw - 0.04 + st * 0.6 + c * 0.22; s.shinR.rotation.x = 0.08 + st * 1.2 + Math.max(0, cw) * A * (1.6 + run * 0.6) + c * 1.56;
   s.legL.rotation.z = -0.03 * (1 - c); s.legR.rotation.z = 0.03 * (1 - c);
   if (s.sit) { s.legL.rotation.x = s.legR.rotation.x = -1.45; s.shinL.rotation.x = s.shinR.rotation.x = 1.4; }   // transport o'rindig'ida o'tirgan holat
+  // o'rindiqda o'tirgan odam transportga sig'ishi uchun eski o'lchamda chiziladi
+  const sc = s.sit ? s.s / CHAR_K : s.s;
+  if (s.drawS !== sc && s.root) { s.drawS = sc; s.root.scale.set(sc * s.build, sc, sc * s.build); }
   const bob = Math.abs(Math.sin(ph)) * 0.035 * Math.min(1, sp / 2) * (1 - c);
   s.legL.position.y = s.legR.position.y = HIP_Y - c * 0.45 + bob;
   s.upper.position.y = -c * 0.45 + bob;
@@ -518,6 +550,21 @@ export function animateSoldier(s, dt, sp, aiming, pitch) {
   s.head.rotation.x = (s.hipFire ? 0.02 : 0.1) * aimK - s.aimPitch * 0.35 - s.torso.rotation.x * 0.6 * s.ready;
   s.head.rotation.z = (s.hipFire ? 0 : -0.14) * aimK + fl * 0.12;
   s.armsG.rotation.x += fl * 0.2;
+  // yotgan holat: tana yuztuban yerda, ko'krak biroz ko'tarilgan, qo'llar va qurol oldinga, bosh oldinga qaraydi; emaklaganda oyoqlar sal qimirlaydi
+  const p = s.proneAmt || 0;
+  if (s.root) s.root.rotation.x = p * 1.47;
+  if (p > 0.001) {
+    const cr = Math.sin(ph * 0.8) * 0.16 * Math.min(1, sp / 1.2);
+    s.legL.rotation.x += (cr - s.legL.rotation.x) * p; s.legR.rotation.x += (-cr - s.legR.rotation.x) * p;
+    s.shinL.rotation.x += (0.06 + Math.max(0, cr) * 1.4 - s.shinL.rotation.x) * p; s.shinR.rotation.x += (0.06 + Math.max(0, -cr) * 1.4 - s.shinR.rotation.x) * p;
+    s.legL.rotation.z += (-0.1 - s.legL.rotation.z) * p; s.legR.rotation.z += (0.1 - s.legR.rotation.z) * p;
+    s.legL.position.y = s.legR.position.y = HIP_Y - c * 0.45 * (1 - p);
+    s.upper.position.y *= 1 - p; s.upper.rotation.y *= 1 - p;
+    s.torso.rotation.x += (-0.2 - s.aimPitch * 0.3 - s.torso.rotation.x) * p;
+    s.armsG.rotation.x += (-1.18 - s.aimPitch * 0.5 - s.gunKick * 0.03 - s.armsG.rotation.x) * p;
+    s.head.rotation.x += (-1.0 - s.aimPitch * 0.4 - s.head.rotation.x) * p; s.head.rotation.y *= 1 - p; s.head.rotation.z *= 1 - p;
+  }
+  skinPose(s);
 }
 
 // Zombi: sudralib yurish, tana oldinga engashgan va chayqaladi, qo'llar oldinga cho'zilgan; s.atk (0..1) — zarba paytida qo'llar siltanadi
@@ -542,6 +589,7 @@ function animateZombie(s, dt, sp) {
   s.head.rotation.x = -0.18 + Math.sin(s.lookT * 1.1) * 0.06;
   s.head.rotation.z = 0.24 + Math.sin(s.lookT * 0.8 + s.variant * 2) * 0.1;
   s.head.rotation.y = Math.sin(s.lookT * 0.6) * 0.15;
+  skinPose(s);
 }
 
 // Halok bo'lish: avval tizzalar bukiladi va qurol qo'ldan tushadi, so'ng tana yerga yiqiladi
@@ -562,4 +610,5 @@ export function animateDeath(s, dt, t) {
   s.head.rotation.x += ((d > 0 ? -0.35 : 0.3) * e - s.head.rotation.x) * 0.2;
   s.head.rotation.y += (s.fallSpin * 1.2 * e - s.head.rotation.y) * 0.2;
   s.head.rotation.z = 0;
+  skinPose(s);
 }

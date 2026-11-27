@@ -15,7 +15,7 @@ async function waitInfo(pred, ms) { const t0 = Date.now(); let i = null; while (
   fs.rmSync(copy, { recursive: true, force: true });
   fs.cpSync(src, copy, { recursive: true, filter: (p) => !p.includes(`${path.sep}tests`) && !p.includes(`${path.sep}.git`) });
   let log = '';
-  const srv = spawn('sh', ['start.sh'], { cwd: copy, env: { ...process.env, PORT: String(PORT), ZJ_NO_BROWSER: '1' }, detached: true, stdio: ['ignore', 'pipe', 'pipe'] });
+  const srv = spawn('sh', ['start.sh'], { cwd: copy, env: { ...process.env, PORT: String(PORT), ZJ_NO_BROWSER: '1', REJOIN_GRACE: '2' }, detached: true, stdio: ['ignore', 'pipe', 'pipe'] });
   srv.stdout.on('data', (d) => (log += d)); srv.stderr.on('data', (d) => (log += d));
   const stop = () => { try { process.kill(-srv.pid); } catch (e) { /* tugagan */ } };
   process.on('exit', stop);
@@ -44,6 +44,7 @@ async function waitInfo(pred, ms) { const t0 = Date.now(); let i = null; while (
   await pg.shot('stale_warning');
 
   // jang tugaydi -> server o'zi qayta ishga tushadi
+  // (aloqasi uzilgan o'yinchi REJOIN_GRACE soniya kutiladi — sinovda 2 s; shundan keyin xonadan chiqariladi va jang tugaydi)
   B.w.close();
   const i3 = await waitInfo((i) => i.build && i.build !== i1.build, 12000);
   ok("jang tugagach server o'zi qayta ishga tushdi (yangi kod, eskirmagan)", i3 && i3.build !== i1.build && i3.stale === false && /qayta ishga tushmoqda/.test(log), JSON.stringify(i3 && { build: i3.build, stale: i3.stale }));

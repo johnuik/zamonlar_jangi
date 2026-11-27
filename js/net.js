@@ -22,6 +22,7 @@ export class Net {
     if (!this.ws) return;
     const ws = this.ws; this.ws = null;
     try { ws.send(JSON.stringify({ t: 'leave' })); } catch (e) { /* e'tiborsiz */ }
+    ws.onmessage = null;   // yopilayotgan ulanishdan kechikib kelgan xabar (masalan, "jang boshlandi") endi qabul qilinmaydi
     ws.close();
   }
 }

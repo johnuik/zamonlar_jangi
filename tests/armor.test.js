@@ -38,12 +38,12 @@ async function single() {
   };
   const dFront = await fireAt(-30, 0, Math.PI / 2);     // oldidan
   const dRear = await fireAt(-50, 0, -Math.PI / 2);     // orqasidan
-  // kutilgan zarar qo'ldagi qurolga bog'liq: old zirh 0.5 × 0.08, orqa zirh 0.5 × 0.5 (yonguncha)
+  // kutilgan zarar qo'ldagi qurolga bog'liq: oddiy o'qning transportga ko'paytuvchisi 0.85; old zirh × 0.08, orqa zirh × 0.5 (yonguncha)
   const wd = await T(`G.weapons[0].def.dmg`), about = (v, e) => Math.abs(v - e) <= Math.max(1.01, e * 0.12);
-  ok("orqadan o'q old tomondagidan ancha ko'p jon oladi", about(dFront, wd * 0.04) && about(dRear, wd * 0.25) && dRear > dFront * 4, `qurol zarari=${wd} · old=${dFront.toFixed(1)} orqa=${dRear.toFixed(1)}`);
+  ok("orqadan o'q old tomondagidan ancha ko'p jon oladi", about(dFront, wd * 0.068) && about(dRear, wd * 0.425) && dRear > dFront * 4, `qurol zarari=${wd} · old=${dFront.toFixed(1)} orqa=${dRear.toFixed(1)}`);
   await T(`(H.hp = 290, 1)`);   // yonish darajasidan past (300)
   const dRearBurn = await fireAt(-50, 0, -Math.PI / 2);
-  ok("yonish darajasidan keyin orqa ham oddiy zirhdek (tez jon ketishi faqat yonguncha)", about(dRearBurn, wd * 0.04) && (await T(`H.burning`)) === true, `orqa (yonayotgan)=${dRearBurn.toFixed(1)}`);
+  ok("yonish darajasidan keyin orqa ham oddiy zirhdek (tez jon ketishi faqat yonguncha)", about(dRearBurn, wd * 0.068) && (await T(`H.burning`)) === true, `orqa (yonayotgan)=${dRearBurn.toFixed(1)}`);
 
   // --- Yonayotgan tank yurmaydi, lekin minora va pushka ishlaydi ---
   await T(`(P.pos.set(-40, 0, 4), 1)`); await sleep(300);

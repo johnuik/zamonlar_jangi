@@ -27,7 +27,7 @@ async function single() {
   // snayper: tanaga ikki o'q, boshga bir o'q
   await T(`(D.setClass(2), D.applyLoadout(), G.switchT = 0, P.pos.set(0, 0, 36), 1)`);
   const sn = await T(`(() => { const V3 = P.pos.constructor, d = new V3(0, 0, 1), W = G.weapons[0].def, out = [];
-    for (const y of [1.2, 1.65]) { D.spawnEnemy('rifle'); const s = G.soldiers[G.soldiers.length - 1]; s.update = () => {}; s.pos.set(0, 0, 60); s.root.position.copy(s.pos); const hp0 = s.hp;
+    for (const y of [1.2, 1.86]) { D.spawnEnemy('rifle'); const s = G.soldiers[G.soldiers.length - 1]; s.update = () => {}; s.pos.set(0, 0, 60); s.root.position.copy(s.pos); const hp0 = s.hp;
       D.hitscan(new V3(0, y, 40), d, W); const a = [s.alive, Math.round(hp0 - s.hp)]; D.hitscan(new V3(0, y, 40), d, W); out.push([hp0, a[0], a[1], s.alive]); s.alive = false; s.root.visible = false; }
     return [W.dmg, W.head, out]; })()`);
   ok("snayper: tanaga birinchi o'q o'ldirmaydi, ikkinchisi o'ldiradi; boshga — bitta o'q", sn[2][0][1] === true && sn[2][0][3] === false && sn[2][1][1] === false, JSON.stringify(sn));
@@ -51,7 +51,7 @@ async function single() {
   const hit2 = await T(`[G.foe.hp, G.weapons[0].mag, HV.hp === HV.T.hp]`);
   ok("yo'lovchi o'z avtomatidan otadi: dushmanga tegadi, o'z vertolyotiga zarar yetmaydi", hit2[0] < hit[0] && hit2[1] < hit[1] && hit2[2] === true, `dushman joni ${hit[0]} → ${Math.round(hit2[0])}, o'qdon ${hit[1]} → ${hit2[1]}`);
   await T(`(D.mouse.R = true, 1)`); await until(`G.ads >= 1`); await sleep(200);
-  const ads = await T(`[+D.camera.fov.toFixed(0), G.weapons[0].def.adsFov, D.camera.position.distanceTo(HV.eyePos(2, P.pos.clone())) < 0.2]`);
+  const ads = await T(`[+D.camera.fov.toFixed(0), G.weapons[0].def.adsFov * D.settings.fov / 80, D.camera.position.distanceTo(HV.eyePos(2, P.pos.clone())) < 0.2]`);
   await shot(`pass_${era}_ads`);
   await T(`(D.mouse.R = false, 1)`); await until(`G.ads <= 0`);
   await ev(KEY('KeyR')); await sleep(200);
@@ -86,9 +86,10 @@ async function single() {
   await T(`(D.exitVehicle(), 1)`); await sleep(400);
   // o'z personajimiz har bir transportda (3-shaxs) ko'rinadi
   const av = await T(`(() => { const out = []; for (const [id, seat] of [[0, 0], [1, 0], [2, 0], [2, 1], [3, 0], [4, 0], [6, 0], [6, 1], [7, 0], [8, 0], [8, 1]]) { const v = G.vehicles[id]; D.enterVehicle(v, seat);
-      if (D.vehFP()) D.toggleVehView(); D.tick(0.03); const e = v.seatPos(seat, P.pos.clone()); out.push([v.type + seat, G.avatar.root.visible, +G.avatar.root.position.distanceTo(e).toFixed(2), G.avatar.sit === true]);
+      if (D.vehFP()) D.toggleVehView(); D.tick(0.03); const e = v.seatPos(seat, P.pos.clone()); out.push([v.type + seat, G.avatar.root.visible === (v.skin ? v.seatShown(seat) || !v.T.enclosed : true), +G.avatar.root.position.distanceTo(e).toFixed(2), G.avatar.sit === true, G.avatar.root.visible]);
       if (seat !== 0 || false) D.toggleVehView(); D.exitVehicle(); } return out; })()`);
-  ok("o'z personaji barcha transportlarda ko'rinadi (3-shaxs ko'rinishida, o'rindiq joyida)", av.length === 11 && av.every((a) => a[1] === true && a[2] < 0.05), av.map((a) => a[0] + (a[3] ? ':o\'tirgan' : ':tik')).join(' '));
+  // (haqiqiy model qo'yilgan tankda haydovchi korpus ichida — tashqaridan ko'rinmaydi; qolgan hamma o'rinda o'z joyida ko'rinadi)
+  ok("o'z personaji transportlarda o'rindiq joyida ko'rinadi (tank haydovchisi — ichkarida)", av.length === 11 && av.every((a) => a[1] === true && (!a[4] || a[2] < 0.05)), av.map((a) => a[0] + (a[4] ? (a[3] ? ':o\'tirgan' : ':tik') : ':ichkarida')).join(' '));
   await T(`(localStorage.removeItem('zj_view'), G.viewPref = {}, 1)`);
   await T(`(D.enterVehicle(G.vehicles[6], 0), P.yaw = G.vehicles[6].yaw + Math.PI + 0.9, P.pitch = -0.25, 1)`); await sleep(600);
   await shot(`pass_${era}_tank_avatar`);

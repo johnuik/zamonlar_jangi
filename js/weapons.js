@@ -1,52 +1,113 @@
 import * as THREE from '../lib/three.module.js';
+import { gunModelFor, knifeModel, skinGun } from './gunskin.js';
+import { rbox } from './gfx.js';
 import { flashTexture } from './fx.js';
 
 // ================= KLASSLAR =================
-// Har bir klassning asosiy quroli boshqa; to'pponcha, pichoq va granata hammasida bir xil.
+// Har bir klassning asosiy quroli boshqa; pichoq va granata hammasida bir xil.
+// alts — shu klassda tanlasa bo'ladigan asosiy qurollar (birinchisi — boshlang'ich; qolganlari daraja bilan ochiladi, js/progress.js).
 export const CLASSES = [
-  { id: 'assault', name: 'Avtomatchi', primary: 'ar', desc: 'Avtomat — har qanday masofada ishonchli, universal jangchi.' },
-  { id: 'engineer', name: 'Injener', primary: 'smg', desc: "PP — yaqin jangda juda kuchli va tez, uzoq masofada kuchsiz." },
-  { id: 'sniper', name: 'Snayper', primary: 'sniper', desc: "Optik miltiq — uzoqdan bir o'q bilan. Yaqinda noqulay." },
-  { id: 'breacher', name: 'Shturmchi', primary: 'shotgun', desc: "Drobovik — uy ichida va yaqin masofada bir o'qda yiqitadi." },
+  { id: 'assault', name: 'Avtomatchi', primary: 'ar', alts: ['ar', 'ar2'], desc: 'Avtomat — har qanday masofada ishonchli, universal jangchi.' },
+  { id: 'engineer', name: 'Injener', primary: 'smg', alts: ['smg', 'smg2'], desc: "PP — yaqin jangda juda kuchli va tez, uzoq masofada kuchsiz." },
+  { id: 'sniper', name: 'Snayper', primary: 'sniper', alts: ['sniper'], desc: "Optik miltiq — uzoqdan bir o'q bilan; transportni ham teshadi. Yaqinda noqulay." },
+  { id: 'breacher', name: 'Shturmchi', primary: 'shotgun', alts: ['shotgun', 'shotgun2'], desc: "Drobovik — uy ichida va yaqin masofada bir o'qda yiqitadi." },
+  { id: 'gunner', name: 'Pulemyotchi', primary: 'lmg', alts: ['lmg'], desc: "Qo'l pulemyoti — uzoq uzluksiz o't, yengil transportni ham ishdan chiqaradi. Og'ir va sekin." },
+  { id: 'marksman', name: 'Mergan', primary: 'dmr', alts: ['dmr'], desc: "Yarim avtomat optik miltiq — o'rta va uzoq masofada tez ketma-ket aniq o'q." },
 ];
+// To'pponcha o'rnidagi qurollar (ikkinchisi daraja bilan ochiladi)
+export const SIDEARMS = ['pistol', 'pistol2'];
 
 // falloff: [boshlanish, tugash, minimal ko'paytuvchi]
+// vehMul — transportga zarar ko'paytuvchisi (ko'rsatilmasa VEH_MUL); pierce — zirhni qisman teshish: zirh ko'paytuvchisi shundan past bo'lmaydi
+export const VEH_MUL = 0.85;
 export const WEAPONS = {
   historical: {
     ar: { id: 'ar', name: 'Avtomat StG-44', short: 'StG-44', dmg: 40, head: 1.8, rpm: 560, mag: 30, reserve: 180, reload: 2.6, auto: true,
       hip: 0.045, spread: 0.004, bloom: 0.005, bloomMax: 0.032, recoil: 0.0105, recoilH: 0.0065, adsFov: 54, adsTime: 0.2, range: 240, falloff: [45, 120, 0.75],
       sound: 'ar', model: 'stg', move: 0.98 },
+    ar2: { id: 'ar2', name: 'Avtomat miltiq FG-42', short: 'FG-42', dmg: 47, head: 1.8, rpm: 610, mag: 20, reserve: 140, reload: 2.5, auto: true,
+      hip: 0.05, spread: 0.0035, bloom: 0.006, bloomMax: 0.036, recoil: 0.0135, recoilH: 0.0085, adsFov: 52, adsTime: 0.22, range: 280, falloff: [55, 150, 0.8],
+      sound: 'ar', model: 'stg', move: 0.96, vehMul: 1.0 },
     smg: { id: 'smg', name: 'PP-41', short: 'PP-41', dmg: 27, head: 1.5, rpm: 860, mag: 71, reserve: 213, reload: 3.1, auto: true,
       hip: 0.03, spread: 0.013, bloom: 0.004, bloomMax: 0.032, recoil: 0.0095, recoilH: 0.008, adsFov: 62, adsTime: 0.14, range: 110, falloff: [9, 36, 0.35],
       sound: 'smg', model: 'drum', move: 1.05 },
-    sniper: { id: 'sniper', name: 'Snayper M-44 (optika)', short: 'M-44', dmg: 70, head: 3, rpm: 46, mag: 5, reserve: 35, reload: 3.2, auto: false,
+    smg2: { id: 'smg2', name: 'PP MP-40', short: 'MP-40', dmg: 32, head: 1.5, rpm: 540, mag: 32, reserve: 192, reload: 2.2, auto: true,
+      hip: 0.026, spread: 0.009, bloom: 0.003, bloomMax: 0.026, recoil: 0.0075, recoilH: 0.005, adsFov: 60, adsTime: 0.14, range: 130, falloff: [14, 48, 0.45],
+      sound: 'smg', model: 'vityaz', move: 1.05 },
+    sniper: { id: 'sniper', name: 'Snayper M-44 (optika)', short: 'M-44', dmg: 92, head: 3, rpm: 46, mag: 5, reserve: 35, reload: 3.2, auto: false,
       hip: 0.085, spread: 0.0, bloom: 0.03, recoil: 0.08, recoilH: 0.014, adsFov: 16, adsTime: 0.3, range: 500, falloff: [180, 500, 0.9],
-      sound: 'bolt', model: 'mosin', move: 0.92, bolt: true, scope: true },
+      sound: 'bolt', model: 'mosin', move: 0.92, bolt: true, scope: true, vehMul: 2.2, pierce: 0.45 },
     shotgun: { id: 'shotgun', name: 'Drobovik M-97', short: 'M-97', dmg: 18, pellets: 9, head: 1.3, rpm: 72, mag: 6, reserve: 42, reload: 0.55, auto: false,
       hip: 0.065, spread: 0.05, bloom: 0.0, recoil: 0.08, recoilH: 0.02, adsFov: 66, adsTime: 0.18, range: 60, falloff: [7, 28, 0.15],
-      sound: 'shotgun', model: 'trench', move: 1.0, pump: true, shells: true },
+      sound: 'shotgun', model: 'trench', move: 1.0, pump: true, shells: true, vehMul: 0.6 },
+    shotgun2: { id: 'shotgun2', name: "Ikki stvolli ov miltig'i", short: 'Ikki stvol', dmg: 20, pellets: 12, head: 1.3, rpm: 200, mag: 2, reserve: 40, reload: 0.7, auto: false,
+      hip: 0.07, spread: 0.06, bloom: 0.0, recoil: 0.1, recoilH: 0.025, adsFov: 66, adsTime: 0.17, range: 55, falloff: [6, 24, 0.12],
+      sound: 'shotgun', model: 'trench', move: 1.02, shells: true, vehMul: 0.6 },
+    lmg: { id: 'lmg', name: 'Pulemyot DP-27', short: 'DP-27', dmg: 36, head: 1.6, rpm: 560, mag: 47, reserve: 188, reload: 4.2, auto: true,
+      hip: 0.07, spread: 0.006, bloom: 0.003, bloomMax: 0.03, recoil: 0.0095, recoilH: 0.008, adsFov: 58, adsTime: 0.3, range: 260, falloff: [50, 140, 0.75],
+      sound: 'mg', model: 'mg', move: 0.84, vehMul: 1.15, pierce: 0.2 },
+    dmr: { id: 'dmr', name: 'Yarim avtomat SVT-40 (optika)', short: 'SVT-40', dmg: 54, head: 2.2, rpm: 230, mag: 10, reserve: 60, reload: 2.9, auto: false,
+      hip: 0.07, spread: 0.0, bloom: 0.012, bloomMax: 0.04, recoil: 0.04, recoilH: 0.012, adsFov: 26, adsTime: 0.24, range: 400, falloff: [110, 320, 0.85],
+      sound: 'bolt', model: 'mosin', move: 0.95, scope: true, vehMul: 1.4, pierce: 0.25 },
     pistol: { id: 'pistol', name: "To'pponcha TT-33", short: 'TT-33', dmg: 40, head: 1.8, rpm: 380, mag: 8, reserve: 64, reload: 1.6, auto: false,
       hip: 0.03, spread: 0.008, bloom: 0.01, recoil: 0.03, recoilH: 0.01, adsFov: 68, adsTime: 0.12, range: 120, falloff: [15, 45, 0.6],
+      sound: 'pistol', model: 'tt', move: 1.08 },
+    pistol2: { id: 'pistol2', name: 'Revolver Nagan', short: 'Nagan', dmg: 62, head: 2.0, rpm: 170, mag: 7, reserve: 49, reload: 2.7, auto: false,
+      hip: 0.03, spread: 0.005, bloom: 0.016, recoil: 0.05, recoilH: 0.014, adsFov: 66, adsTime: 0.13, range: 140, falloff: [20, 60, 0.65],
       sound: 'pistol', model: 'tt', move: 1.08 },
   },
   modern: {
     ar: { id: 'ar', name: 'Avtomat M4', short: 'M4', dmg: 35, head: 1.8, rpm: 720, mag: 30, reserve: 180, reload: 2.3, auto: true,
       hip: 0.04, spread: 0.0035, bloom: 0.004, bloomMax: 0.03, recoil: 0.0088, recoilH: 0.0055, adsFov: 50, adsTime: 0.18, range: 250, falloff: [45, 120, 0.75],
       sound: 'ar', model: 'm4', move: 1.0 },
+    ar2: { id: 'ar2', name: 'Jangovar miltiq SCAR-H', short: 'SCAR-H', dmg: 46, head: 1.8, rpm: 600, mag: 20, reserve: 140, reload: 2.5, auto: true,
+      hip: 0.046, spread: 0.003, bloom: 0.006, bloomMax: 0.036, recoil: 0.0125, recoilH: 0.008, adsFov: 50, adsTime: 0.2, range: 300, falloff: [60, 160, 0.8],
+      sound: 'ar', model: 'm4', move: 0.97, vehMul: 1.0 },
     smg: { id: 'smg', name: 'PP-19 Vityaz', short: 'PP-19', dmg: 29, head: 1.5, rpm: 900, mag: 30, reserve: 210, reload: 2.0, auto: true,
       hip: 0.028, spread: 0.012, bloom: 0.004, bloomMax: 0.03, recoil: 0.0085, recoilH: 0.007, adsFov: 62, adsTime: 0.13, range: 110, falloff: [10, 38, 0.35],
       sound: 'smg', model: 'vityaz', move: 1.06 },
-    sniper: { id: 'sniper', name: 'Snayper SR-9', short: 'SR-9', dmg: 70, head: 3, rpm: 42, mag: 5, reserve: 35, reload: 3.2, auto: false,
+    smg2: { id: 'smg2', name: 'PP-90 (50 o\'qli)', short: 'PP-90', dmg: 25, head: 1.5, rpm: 940, mag: 50, reserve: 200, reload: 2.4, auto: true,
+      hip: 0.026, spread: 0.011, bloom: 0.003, bloomMax: 0.028, recoil: 0.0072, recoilH: 0.006, adsFov: 62, adsTime: 0.13, range: 110, falloff: [10, 36, 0.35],
+      sound: 'smg', model: 'vityaz', move: 1.07 },
+    sniper: { id: 'sniper', name: 'Snayper SR-9', short: 'SR-9', dmg: 92, head: 3, rpm: 42, mag: 5, reserve: 35, reload: 3.2, auto: false,
       hip: 0.09, spread: 0.0, bloom: 0.03, recoil: 0.085, recoilH: 0.015, adsFov: 13, adsTime: 0.32, range: 500, falloff: [200, 500, 0.9],
-      sound: 'sniper', model: 'sniper', move: 0.9, bolt: true, scope: true },
+      sound: 'sniper', model: 'sniper', move: 0.9, bolt: true, scope: true, vehMul: 2.2, pierce: 0.45 },
     shotgun: { id: 'shotgun', name: 'Drobovik M-12', short: 'M-12', dmg: 17, pellets: 10, head: 1.3, rpm: 78, mag: 8, reserve: 48, reload: 0.5, auto: false,
       hip: 0.065, spread: 0.05, bloom: 0.0, recoil: 0.075, recoilH: 0.02, adsFov: 66, adsTime: 0.17, range: 60, falloff: [7, 28, 0.15],
-      sound: 'shotgun', model: 'shotgun', move: 1.0, pump: true, shells: true },
+      sound: 'shotgun', model: 'shotgun', move: 1.0, pump: true, shells: true, vehMul: 0.6 },
+    shotgun2: { id: 'shotgun2', name: 'Yarim avtomat drobovik S-12', short: 'S-12', dmg: 14, pellets: 9, head: 1.3, rpm: 230, mag: 8, reserve: 48, reload: 2.7, auto: false,
+      hip: 0.07, spread: 0.055, bloom: 0.004, bloomMax: 0.03, recoil: 0.06, recoilH: 0.02, adsFov: 66, adsTime: 0.17, range: 55, falloff: [7, 26, 0.15],
+      sound: 'shotgun', model: 'shotgun', move: 0.98, vehMul: 0.6 },
+    lmg: { id: 'lmg', name: 'Pulemyot PKM', short: 'PKM', dmg: 34, head: 1.6, rpm: 650, mag: 100, reserve: 200, reload: 5.0, auto: true,
+      hip: 0.07, spread: 0.006, bloom: 0.003, bloomMax: 0.03, recoil: 0.009, recoilH: 0.008, adsFov: 58, adsTime: 0.3, range: 270, falloff: [50, 140, 0.75],
+      sound: 'mg', model: 'mg', move: 0.82, vehMul: 1.15, pierce: 0.2 },
+    dmr: { id: 'dmr', name: 'Mergan miltig\'i SVD (optika)', short: 'SVD', dmg: 56, head: 2.2, rpm: 250, mag: 10, reserve: 60, reload: 2.8, auto: false,
+      hip: 0.07, spread: 0.0, bloom: 0.012, bloomMax: 0.04, recoil: 0.042, recoilH: 0.012, adsFov: 24, adsTime: 0.24, range: 420, falloff: [120, 340, 0.85],
+      sound: 'sniper', model: 'sniper', move: 0.94, scope: true, vehMul: 1.4, pierce: 0.25 },
     pistol: { id: 'pistol', name: "To'pponcha G-19", short: 'G-19', dmg: 34, head: 1.8, rpm: 460, mag: 17, reserve: 102, reload: 1.5, auto: false,
       hip: 0.028, spread: 0.007, bloom: 0.008, recoil: 0.025, recoilH: 0.009, adsFov: 68, adsTime: 0.12, range: 120, falloff: [15, 45, 0.6],
       sound: 'pistol', model: 'glock', move: 1.08 },
+    pistol2: { id: 'pistol2', name: "Og'ir to'pponcha Burgut .50", short: '.50', dmg: 64, head: 2.0, rpm: 190, mag: 7, reserve: 49, reload: 2.1, auto: false,
+      hip: 0.032, spread: 0.005, bloom: 0.018, recoil: 0.055, recoilH: 0.016, adsFov: 66, adsTime: 0.13, range: 140, falloff: [20, 60, 0.65],
+      sound: 'pistol', model: 'glock', move: 1.07 },
   },
 };
+// Har bir qurolning ustun tomoni (klass tanlash oynasida ko'rsatiladi) — o'yinda "keraksiz" qurol bo'lmasligi kerak
+export const WEAPON_ADV = {
+  ar: "har qanday masofada barqaror: aniq, tepkisi kam, magazini yetarli",
+  ar2: "har bir o'qi kuchliroq va uzoqroqqa yetadi; evaziga magazini kichik (20) va tepkisi kattaroq",
+  smg: "eng tez otadi va eng tez mo'ljalga olinadi — yaqin jangda tengsiz; uzoqda zarari tez kamayadi",
+  smg2: { historical: "sekinroq otadi, lekin aniq va tepkisi juda kam — o'rta masofada ham ishlaydi", modern: "50 o'qli magazin — qayta o'qlamasdan uzoq otadi" },
+  sniper: "boshga bir o'q; transportni ham teshadi (jipga 3 o'q) — eng uzoq masofa",
+  dmr: "yarim avtomat: snayperdan 5 baravar tez otadi, optikasi yengilroq — harakatdagi nishonga qulay",
+  shotgun: "yaqindan bir o'qda yiqitadi; patronlari bittalab solinadi — o'qlash paytida ham otsa bo'ladi",
+  shotgun2: { historical: "ikki stvol — ikki o'qni ketma-ket darhol uzadi: eng kuchli birinchi zarba", modern: "yarim avtomat: pompasiz, ketma-ket tez otadi; magazin bilan o'qlanadi" },
+  lmg: "katta magazin va uzluksiz o't: raqibni bostirib turadi, yengil transportni ishdan chiqaradi",
+  pistol: "tez olinadi va tez otadi — asosiy qurol bo'shab qolganda qutqaradi",
+  pistol2: "to'pponchalar ichida eng kuchlisi: tanaga 2 o'q; sekinroq otadi va magazini kichik",
+};
+export const weaponAdv = (id, era) => { const a = WEAPON_ADV[id]; return !a ? '' : typeof a === 'string' ? a : a[era] || ''; };
+
 // Qo'lga olinadigan pichoq va granata (3 va 4-o'rinlar)
 // Zombi-o'yinchining yagona quroli: chap tugma — panja urish, o'ng tugma — tishlash
 export const CLAW = { id: 'claw', kind: 'melee', name: 'Panjalar', short: 'Panja', move: 1.2, slash: 26, stab: 42, slashT: 0.42, stabT: 0.7, reach: 2.5 };
@@ -56,9 +117,38 @@ export const KNIFE = { id: 'knife', kind: 'melee', name: 'Pichoq', short: 'Picho
 export const NADE = { id: 'nade', kind: 'throw', name: 'Granata', short: 'Granata', move: 1.05, fuse: 3.4 };
 
 // Klass uchun qurollar to'plami: [asosiy, to'pponcha, pichoq, granata]
-export function loadout(era, cls) {
+// pick — o'yinchi tanlagan variantlar: { p: asosiy qurol idsi, s: to'pponcha idsi, a: qo'shimchalar ro'yxati } (js/progress.js)
+export function loadout(era, cls, pick) {
   const W = WEAPONS[era], c = CLASSES[cls] || CLASSES[0];
-  return [W[c.primary], W.pistol, KNIFE, NADE];
+  const p = pick && c.alts.includes(pick.p) && W[pick.p] ? W[pick.p] : W[c.primary];
+  const sd = pick && SIDEARMS.includes(pick.s) && W[pick.s] ? W[pick.s] : W.pistol;
+  return [pick && pick.a && pick.a.length ? withAttachments(p, pick.a) : p, sd, KNIFE, NADE];
+}
+
+// ================= QUROL QO'SHIMCHALARI =================
+// Har bir qurolga ko'pi bilan 2 ta. fits — qaysi qurollarga o'rnatiladi (ko'rsatilmasa — o'qotar asosiy qurollarning hammasiga).
+export const ATTACH = {
+  grip: { name: 'Tutqich', desc: "Tepki 18% kamroq, sondan otish aniqroq", no: ['sniper', 'dmr'] },
+  extmag: { name: 'Katta magazin', desc: "Magazinda 40% ko'proq o'q, qayta o'qlash biroz sekinroq", no: ['shotgun', 'shotgun2', 'sniper'] },
+  optic: { name: 'Kollimator optika', desc: "Mo'ljalda 1.6 baravar yaqinlashtiradi", no: ['sniper', 'dmr', 'shotgun', 'shotgun2'] },
+  supp: { name: "Ovoz so'ndirgich", desc: "O'q uzganingizda xaritada ko'rinmaysiz, ovoz past; zarar 6% kam", no: ['shotgun', 'shotgun2', 'lmg'] },
+  laser: { name: 'Lazer nishon', desc: 'Sondan otishda tarqalish 30% kam', no: ['sniper', 'dmr'] },
+};
+export const MAX_ATTACH = 2;
+export const attachFits = (att, weaponId) => !!ATTACH[att] && !(ATTACH[att].no || []).includes(weaponId);
+// Qo'shimchalar qo'llangan qurol ta'rifi (asl ta'rif o'zgarmaydi)
+export function withAttachments(def, atts, max = MAX_ATTACH) {
+  const d = Object.assign({}, def), list = (atts || []).filter((a) => attachFits(a, def.id)).slice(0, max);
+  if (!list.length) return def;
+  d.att = list;
+  for (const a of list) {
+    if (a === 'grip') { d.recoil *= 0.82; d.recoilH *= 0.8; d.hip *= 0.92; }
+    else if (a === 'extmag') { d.mag = Math.round(d.mag * 1.4); d.reload = +(d.reload * 1.08).toFixed(2); }
+    else if (a === 'optic') { d.adsFov = Math.min(d.adsFov, 40); d.adsTime += 0.03; d.spread *= 0.85; }
+    else if (a === 'supp') { d.quiet = true; d.dmg = +(d.dmg * 0.94).toFixed(1); d.recoil *= 0.93; }
+    else if (a === 'laser') { d.hip *= 0.7; }
+  }
+  return d;
 }
 
 // ================= MATERIALLAR =================
@@ -98,7 +188,7 @@ function mats(era) {
 
 // ================= YORDAMCHI SHAKLLAR =================
 function B(p, w, h, d, m, x, y, z, rx = 0, ry = 0, rz = 0) {
-  const me = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m);
+  const me = new THREE.Mesh(rbox(w, h, d, Math.min(0.0045, Math.min(w, h, d) * 0.2), 0.008), m);   // qirralari yumaloqlangan (gfx.js)
   me.position.set(x, y, z); me.rotation.set(rx, ry, rz); p.add(me); return me;
 }
 function C(p, rt, rb, len, m, x, y, z, axis = 'z', seg = 14) {
@@ -236,7 +326,8 @@ const MODELS = {
     C(gun, 0.0115, 0.0115, 0.05, M.black, 0, -0.058, -0.655, 'z', 12);
     for (let i = 0; i < 3; i++) B(gun, 0.025, 0.003, 0.03, M.dark, 0, -0.058, -0.655, 0, 0, (i / 3) * Math.PI);
     B(gun, 0.016, 0.008, 0.036, M.black, 0, -0.029, -0.445); B(gun, 0.018, 0.008, 0.03, M.black, 0, -0.029, -0.022);       // buklangan zaxira mo'ljallar
-    // golografik nishon
+    // golografik nishon (haqiqiy qurol modeli qo'yilganda ham qoladi — R.keep)
+    const keep0 = gun.children.length;
     B(gun, 0.036, 0.014, 0.078, M.black, 0, -0.027, -0.105);
     B(gun, 0.04, 0.012, 0.03, M.polymer, 0, -0.016, -0.078);
     B(gun, 0.052, 0.005, 0.046, M.black, 0, 0.0205, -0.122);                  // gardish: ust
@@ -246,7 +337,7 @@ const MODELS = {
     const lens = new THREE.Mesh(new THREE.PlaneGeometry(0.043, 0.036), M.lens); lens.position.set(0, 0, -0.138); gun.add(lens);
     const ret = new THREE.Mesh(new THREE.PlaneGeometry(0.013, 0.013), new THREE.MeshBasicMaterial({ map: holoTexture(), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
     ret.position.set(0, 0, -0.137); ret.renderOrder = 5; gun.add(ret);
-    R.reticle = ret;
+    R.reticle = ret; R.keep = gun.children.slice(keep0);
     // magazin (biroz egilgan)
     const mag = new THREE.Group(); mag.position.set(0, -0.145, -0.155); gun.add(mag);
     B(mag, 0.026, 0.085, 0.052, M.blued, 0, -0.04, 0.004, -0.1); B(mag, 0.026, 0.07, 0.052, M.blued, 0, -0.108, -0.01, -0.24);
@@ -433,13 +524,15 @@ const MODELS = {
     for (const z of [-0.47, -0.62]) B(gun, 0.046, 0.056, 0.014, M.metal, 0, -0.08, z);
     B(gun, 0.012, 0.022, 0.016, M.blued, 0, -0.04, -0.79); ring(gun, 0.011, 0.002, M.blued, 0, -0.03, -0.79);
     C(gun, 0.004, 0.004, 0.4, M.metal, 0, -0.112, -0.62, 'z', 8);             // shompol
-    // PU optikasi yon kronshteynda
+    // PU optikasi yon kronshteynda (R.keep — optikasiz qurol modeli qo'yilsa ham qoladi)
+    const keep0 = gun.children.length;
     C(gun, 0.0125, 0.0125, 0.175, M.blued, 0, 0, -0.09, 'z', 14);
     C(gun, 0.0155, 0.0135, 0.03, M.blued, 0, 0, 0.005, 'z', 14); C(gun, 0.0135, 0.0155, 0.03, M.blued, 0, 0, -0.185, 'z', 14);
     C(gun, 0.012, 0.012, 0.002, M.glassDark, 0, 0, 0.021, 'z', 14); C(gun, 0.012, 0.012, 0.002, M.glassDark, 0, 0, -0.201, 'z', 14);
     C(gun, 0.0105, 0.0105, 0.016, M.blued, 0, 0.019, -0.09, 'y', 12); C(gun, 0.0105, 0.0105, 0.016, M.blued, 0.019, 0, -0.07, 'x', 12);
     B(gun, 0.008, 0.034, 0.11, M.blued, -0.019, -0.03, -0.09);
     for (const z of [-0.05, -0.13]) { B(gun, 0.034, 0.008, 0.012, M.blued, 0, 0.0155, z); B(gun, 0.008, 0.03, 0.012, M.blued, 0.0155, 0, z); B(gun, 0.008, 0.03, 0.012, M.blued, -0.0155, 0, z); }
+    R.keep = gun.children.slice(keep0);
     // zatvor dastasi (pastga egilgan)
     const bh = C(gun, 0.005, 0.005, 0.04, M.steel, 0.034, -0.058, 0.012, 'x', 8); bh.userData.bolt = 0.07;
     const kn = ball(gun, 0.011, M.steel, 0.056, -0.072, 0.012); kn.userData.bolt = 0.07;
@@ -629,12 +722,45 @@ const MODELS = {
   },
 };
 
+// Qo'shimchalarning ko'rinishi: modellar mo'ljal chizig'i y = 0 da turadigan qilib yig'ilgan — optika shu chiziqqa, so'ndirgich stvol uchiga qo'yiladi
+function addAttachmentMeshes(gun, M, R, def) {
+  const atts = def.att || [];
+  if (atts.includes('supp') && R.muzzle) {
+    const [x, y, z] = R.muzzle;
+    C(gun, 0.017, 0.017, 0.15, M.black, x, y, z - 0.075, 'z', 14);
+    C(gun, 0.0185, 0.0185, 0.012, M.dark || M.black, x, y, z - 0.012, 'z', 14);
+    R.muzzle = [x, y, z - 0.15]; R.big = (R.big || 1) * 0.55;   // alanga deyarli ko'rinmaydi
+  }
+  if (atts.includes('optic') && !R.reticle && !R.ads) {
+    const z = -0.085;
+    ring(gun, 0.017, 0.0026, M.black, 0, 0, z); ring(gun, 0.017, 0.0026, M.black, 0, 0, z - 0.045);
+    B(gun, 0.02, 0.0035, 0.05, M.black, 0, 0.0185, z - 0.022); B(gun, 0.0035, 0.03, 0.05, M.black, 0.0185, 0, z - 0.022); B(gun, 0.0035, 0.03, 0.05, M.black, -0.0185, 0, z - 0.022);
+    B(gun, 0.018, 0.016, 0.04, M.black, 0, -0.026, z - 0.022);
+    const ret = new THREE.Mesh(new THREE.PlaneGeometry(0.012, 0.012), new THREE.MeshBasicMaterial({ map: holoTexture(), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+    ret.position.set(0, 0, z - 0.03); ret.renderOrder = 5; gun.add(ret);
+    R.reticle = ret;
+  }
+  if (atts.includes('grip') && R.fore && def.model !== 'm4') {
+    const [x, y, z] = R.fore;
+    B(gun, 0.022, 0.07, 0.024, M.polymer || M.black, x, y - 0.03, z + 0.02);
+  }
+  if (atts.includes('laser') && R.fore) {
+    const [x, y, z] = R.fore;
+    B(gun, 0.014, 0.014, 0.05, M.black, x + 0.028, y + 0.035, z);
+    const dot = new THREE.Mesh(new THREE.SphereGeometry(0.0035, 6, 5), new THREE.MeshBasicMaterial({ color: 0xff2a1a }));
+    dot.position.set(x + 0.028, y + 0.035, z - 0.027); gun.add(dot);
+  }
+  if (atts.includes('extmag') && R.mag) R.mag.scale.y *= 1.28;
+}
+
 export function buildViewmodel(def, era, noArms = false) {
   const M = mats(era);
   const g = new THREE.Group();
   const gun = new THREE.Group(); g.add(gun);
   const R = {};
   (MODELS[def.model] || MODELS.mg)(gun, M, R, def, era);
+  { const sk = gunModelFor(def.id, era); if (sk && sk.R) Object.assign(R, sk.R); }   // (haqiqiy model o'z tayanch nuqtalarini bersa — qo'llar va stvol uchi o'shanga)
+  const keepParts = R.keep || [], codeParts = gun.children.filter((c) => !keepParts.includes(c));   // (kod bilan qurilgan qurol tanasi — model bilan almashtirilishi mumkin; R.keep — model so'rasa qoladigan qismlar, masalan, optika)
   const modern = era === 'modern';
   let handL = null;
   if (!noArms) {
@@ -643,12 +769,13 @@ export function buildViewmodel(def, era, noArms = false) {
       // chap qo'l pompda — u bilan birga harakatlanadi
       const hold = new THREE.Group(); R.pump.add(hold);
       const pp = R.pump.position.clone(); pp.y += R.bodyY || 0;
-      handL = addArms(hold, M, new THREE.Vector3(R.grip[0], R.grip[1], R.grip[2]).sub(pp), fp.clone().sub(pp), modern, R);
+      handL = addArms(hold, M, new THREE.Vector3(R.grip[0], R.grip[1], R.grip[2]).sub(pp), fp.clone().sub(pp), true, R);
       // o'ng qo'l pomp bilan birga siljimasligi kerak: uni qurolga ko'chiramiz
       const right = hold.children.filter((c) => c !== handL);
       for (const c of right) { hold.remove(c); c.position.add(pp); gun.add(c); }
-    } else handL = addArms(gun, M, new THREE.Vector3(R.grip[0], R.grip[1], R.grip[2]), fp, modern, R);
+    } else handL = addArms(gun, M, new THREE.Vector3(R.grip[0], R.grip[1], R.grip[2]), fp, true, R);
   }
+  addAttachmentMeshes(gun, M, R, def);
   const muzzle = new THREE.Object3D(); muzzle.position.set(R.muzzle[0], R.muzzle[1], R.muzzle[2]); gun.add(muzzle);
   let eject = null;
   if (R.eject) { eject = new THREE.Object3D(); eject.position.set(R.eject[0], R.eject[1], R.eject[2]); gun.add(eject); }
@@ -668,12 +795,18 @@ export function buildViewmodel(def, era, noArms = false) {
   gun.traverse((o) => { if (o.userData.bolt) { o.userData.z0 = o.position.z; boltParts.push(o); } });
   const hip = new THREE.Vector3(R.hip[0], R.hip[1], R.hip[2]);
   const ads = R.ads ? new THREE.Vector3(R.ads[0], R.ads[1], R.ads[2]) : new THREE.Vector3(0, 0, -R.eye);
-  return {
+  const vm = {
     group: g, gun, muzzle, eject, flash, hip, ads, boltParts, handL, handLBase: handL ? handL.position.clone() : null,
     spin: R.spin || null, mag: R.mag || null, magBase: R.mag ? R.mag.position.clone() : null, magDrop: R.magDrop || 0.3,
     pump: R.pump || null, pumpBase: R.pump ? R.pump.position.clone() : null, slide: R.slide || null,
     reticle: R.reticle || null, shell: !!R.shell, ejectUp: !!R.ejectUp, legacy: !!R.ads,
+    dofRange: null,
   };
+  // haqiqiy qurol modeli (gunskin.js): yuklangan bo'lsa — hozir, aks holda qurol birinchi chizilganda almashadi
+  // mo'ljaldagi ko'z joyi modelning o'z mo'ljalidan olinadi (optik oynali, to'pponcha, granatomyot va qo'lda olib yuriladigan vositalardan tashqari)
+  const autoAds = !def.scope && !SIDEARMS.includes(def.id) && !['rpg', 'turret', 'drone'].includes(def.id);
+  vm.skinLater = gunSkinner(gunModelFor(def.id, era), gun, codeParts, R.muzzle[2], R.ads ? null : R.eye, vm, keepParts, autoAds);
+  return vm;
 }
 
 // Gilza: latun (yoki drobovikning qizil patroni) — otilganda qurol yonidan uchib chiqadi
@@ -700,11 +833,12 @@ export function buildKnife(era) {
   B(k, 0.024, 0.032, 0.105, modern ? M.polymer : M.woodDark, 0, 0, 0.034);     // dasta
   for (let i = 0; i < 5; i++) B(k, 0.0255, 0.034, 0.004, M.dark, 0, 0, 0.0 + i * 0.017);
   B(k, 0.02, 0.036, 0.014, M.metal, 0, 0, 0.093);                              // dasta uchi
+  const codeParts = k.children.slice();
   fist(k, M, 0, -0.004, 0.036, 0.05, 0.07, 0.07, modern, -1);
   forearm(k, M, new THREE.Vector3(0.01, -0.035, 0.07), new THREE.Vector3(0.1, -0.2, 0.44));
   g.traverse((o) => { if (o.isMesh) { o.castShadow = false; o.frustumCulled = false; } });
   g.visible = false;
-  return { group: g, knife: k };
+  return { group: g, knife: k, skinLater: gunSkinner(knifeModel(), k, codeParts, -0.235) };
 }
 
 // Zombi qo'llari (birinchi shaxs): oldinga cho'zilgan ikki bilak va panjalar
@@ -759,21 +893,47 @@ export function buildGrenadeHand(era) {
   return { group: g, nade: n, pin };
 }
 
-// ---------- Noyob qurollar (podvallarda topiladi) ----------
+// ---------- Noyob qurollar (podvallarda va binolarda topiladi) ----------
+// rpg — transportga qulflanadi (lockon): mo'ljalda bir soniya poylansa, raketa nishonni o'zi quvadi.
+// turret — yerga o'rnatiladigan avtomatik pulemyot (js/turret.js). drone — o'yinchining o'zi boshqaradigan dron: 1 ta bomba, nishonga borib urilsa portlaydi, bitta o'q tegsa yo'q bo'ladi (js/drone.js).
+// amr — zirh teshar yirik kalibrli miltiq.
 export function specialWeapons(era) {
   const H = era === 'historical';
   return [
-    { id: 'rpg', name: H ? 'Bazuka M-9' : 'RPG-7', short: H ? 'Bazuka' : 'RPG-7', projectile: 'rocket', dmg: 0, head: 1, rpm: 40, mag: 1, reserve: 5, reload: 3.0, auto: false,
+    { id: 'rpg', name: H ? 'Bazuka M-9' : 'RPG-7', short: H ? 'Bazuka' : 'RPG-7', projectile: 'rocket', lockon: true, dmg: 0, head: 1, rpm: 40, mag: 1, reserve: 5, reload: 3.0, auto: false,
       hip: 0.02, spread: 0.004, bloom: 0, recoil: 0.09, recoilH: 0.02, adsFov: 55, adsTime: 0.3, range: 400, sound: 'rocket', model: 'rpg', move: 0.85, special: true },
-    { id: 'minigun', name: H ? 'Zenit pulemyoti ZP-4' : 'Minigan M-134', short: H ? 'ZP-4' : 'Minigan', dmg: 27, head: 1.5, rpm: 1500, mag: 250, reserve: 250, reload: 5, auto: true,
-      hip: 0.055, spread: 0.03, bloom: 0.002, bloomMax: 0.03, recoil: 0.006, recoilH: 0.006, adsFov: 62, adsTime: 0.3, range: 220, falloff: [40, 120, 0.7],
-      sound: 'mg', model: 'minigun', move: 0.72, special: true, vehMul: 0.9 },
+    { id: 'turret', name: H ? "Qo'riqchi pulemyot (o'zi otadi)" : 'Avtomatik turel', short: 'Turel', deploy: 'turret', dmg: 0, head: 1, rpm: 40, mag: 1, reserve: 1, reload: 2.2, auto: false,
+      hip: 0.02, spread: 0.01, bloom: 0, recoil: 0, recoilH: 0, adsFov: 70, adsTime: 0.3, range: 60, sound: 'mg', model: 'minigun', move: 0.82, special: true },
     { id: 'amr', name: H ? 'PTR-41 tankbuzar' : 'Burgut .50', short: H ? 'PTR-41' : 'Burgut', dmg: 260, head: 2, rpm: 38, mag: 5, reserve: 15, reload: 3.6, auto: false,
       hip: 0.1, spread: 0, bloom: 0.03, recoil: 0.11, recoilH: 0.02, adsFov: 11, adsTime: 0.36, range: 600, sound: 'sniper', model: 'sniper', move: 0.85,
       bolt: true, scope: true, special: true, vehMul: 1.5, ap: true },
-    { id: 'gl', name: H ? 'Granatomyot GM-44' : 'Granatomyot GM-6', short: 'Granatomyot', projectile: 'gl', dmg: 0, head: 1, rpm: 95, mag: 6, reserve: 12, reload: 3.8, auto: false,
-      hip: 0.03, spread: 0.01, bloom: 0, recoil: 0.05, recoilH: 0.01, adsFov: 60, adsTime: 0.22, range: 200, sound: 'gl', model: 'gl', move: 0.9, special: true },
+    { id: 'drone', name: H ? 'Radio-boshqariladigan dron' : 'FPV dron', short: 'Dron', deploy: 'drone', dmg: 0, head: 1, rpm: 34, mag: 1, reserve: 0, reload: 2.4, auto: false,
+      hip: 0.02, spread: 0.01, bloom: 0, recoil: 0, recoilH: 0, adsFov: 70, adsTime: 0.25, range: 200, sound: 'gl', model: 'gl', move: 0.9, special: true },
   ];
 }
 // Transportga o'rnatilgan pulemyot (ko'rinish modeli uchun)
 export const MOUNT_DEF = { id: 'mount', name: 'Bort pulemyoti', model: 'mg' };
+
+// Qurol tanasini modelga almashtiruvchi (darhol urinadi; model hali yuklanmagan bo'lsa — keyinroq chaqiriladigan funksiya qaytaradi)
+// (vm — ko'rinish modeli: unga mo'ljaldagi xiralik chegarasi yoziladi)
+function gunSkinner(def, gun, parts, muzzleZ, eyeZ, vm, keepParts, autoAds) {
+  if (!def) return null;
+  const run = () => {
+    const g = skinGun(def, gun, parts, muzzleZ, eyeZ, { mag: vm && vm.mag, magBase: vm && vm.magBase, keepParts });
+    if (g && vm) {
+      vm.dofRange = g.userData.dofRange || null;
+      const A = g.userData.ads;
+      if (autoAds && A && !def.keep) {
+        // ko'z mo'ljal chizig'ida, orqa mo'ljal (optika) ortida; yaqin maydon xiraligi faqat ko'zga juda yaqin qismlarga (mo'ljal tiniq qoladi)
+        vm.ads.set(0, 0, -A.z); vm.dofRange = [0.02, 0.05];
+        // kollimator optika: o'rtasida qizil nuqta (modelning o'zida yo'q)
+        if (A.optic && !vm.reticle) {
+          const ret = new THREE.Mesh(new THREE.PlaneGeometry(0.011, 0.011), new THREE.MeshBasicMaterial({ map: holoTexture(), transparent: true, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending }));
+          ret.position.set(0, 0, (A.front + A.rear) / 2); ret.renderOrder = 6; gun.add(ret); vm.reticle = ret;
+        }
+      }
+    }
+    return !!g;
+  };
+  return run() ? null : run;
+}

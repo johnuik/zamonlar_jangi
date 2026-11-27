@@ -1,11 +1,12 @@
 import * as THREE from '../lib/three.module.js';
 import { rayAABB, raySphere, rayCyl, inv } from './world.js';
+import { CHAR_K } from './shared.mjs';
 import { makeSoldierModel, animateSoldier, animateDeath } from './soldiermodel.js';
 
 export const TYPES = {
   rifle:   { hp: 100, speed: 3.3, range: 55, prefer: 22, dmg: 14, rpm: 110, burst: [1, 2], pause: [1.0, 1.9], acc: 0.42, name: 'Askar' },
   smg:     { hp: 85,  speed: 4.5, range: 28, prefer: 8,  dmg: 8,  rpm: 650, burst: [4, 8], pause: [0.8, 1.5], acc: 0.3, name: 'Hujumchi' },
-  heavy:   { hp: 300, speed: 2.4, range: 45, prefer: 18, dmg: 9,  rpm: 720, burst: [8, 16], pause: [1.2, 2.2], acc: 0.27, name: 'Pulemyotchi', scale: 1.13 },
+  heavy:   { hp: 300, speed: 2.4, range: 45, prefer: 18, dmg: 9,  rpm: 720, burst: [8, 16], pause: [1.2, 2.2], acc: 0.27, name: 'Pulemyotchi', scale: 1.07 },
   sniper:  { hp: 90,  speed: 2.7, range: 100, prefer: 42, dmg: 48, rpm: 40, burst: [1, 1], pause: [2.8, 4.2], acc: 0.55, name: 'Snayper' },
   officer: { hp: 150, speed: 3.1, range: 30, prefer: 13, dmg: 12, rpm: 320, burst: [2, 4], pause: [1.0, 1.6], acc: 0.4, name: 'Ofitser' },
   zombie:  { hp: 60,  speed: 2.6, range: 2,  prefer: 1,  dmg: 13, rpm: 60,  burst: [1, 1], pause: [1, 1], acc: 1, name: 'Zombi' },
@@ -54,7 +55,7 @@ export class Soldier {
     this.name = name || this.T.name;
     this.pos = pos.clone(); this.vel = new THREE.Vector3();
     this.yaw = Math.atan2(-pos.x, -pos.z);
-    this.s = this.T.scale || 1;
+    this.s = (this.T.scale || 1) * CHAR_K;
     this.maxHp = this.T.hp * (team === 'enemy' ? game.diff.hpMul : 1);
     this.hp = this.maxHp;
     this.alive = true; this.deadT = 0; this.remove = false;
@@ -63,6 +64,7 @@ export class Soldier {
     this.cool = rnd(0.8, 1.8); this.burstLeft = 0; this.shotT = 0;
     this.strafeT = rnd(1, 2.5); this.strafeDir = Math.random() < 0.5 ? -1 : 1;
     this.crouch = false; this.crouchAmt = 0; this.crouchT = rnd(2, 5);
+    this.prone = false; this.proneAmt = 0;   // yotgan holat (tarmoqdagi o'yinchilar)
     this.walkPhase = Math.random() * 6; this.lastFired = -99; this.hitFlash = 0;
     this.grenadeCool = rnd(10, 22); this.rocketCool = rnd(5, 14); this.hiddenT = 0; this.gunKick = 0;
     this.stuckT = 0; this.detourT = 0; this.detour = new THREE.Vector3(); this.descend = -1; this.descT = 0;
@@ -93,10 +95,11 @@ export class Soldier {
   }
 
   // ---------- Geometrik so'rovlar ----------
-  eye(out) { return out.set(this.pos.x, this.pos.y + (1.62 - this.crouchAmt * 0.45) * this.s, this.pos.z); }
-  getAimPoint(out) { return out.set(this.pos.x, this.pos.y + (1.2 - this.crouchAmt * 0.4) * this.s, this.pos.z); }
+  // (o'lchamlar chizilgan model bo'yicha: transport o'rindig'ida o'tirgan odam eski o'lchamda chiziladi — drawS)
+  eye(out) { const p = this.proneAmt; return out.set(this.pos.x, this.pos.y + ((1.62 - this.crouchAmt * 0.45) * (1 - p) + 0.4 * p) * (this.drawS || this.s), this.pos.z); }
+  getAimPoint(out) { const p = this.proneAmt; return out.set(this.pos.x, this.pos.y + ((1.2 - this.crouchAmt * 0.4) * (1 - p) + 0.2 * p) * (this.drawS || this.s), this.pos.z); }
   muzzle(out) {
-    const s = this.s, c = Math.cos(this.yaw), sn = Math.sin(this.yaw);
+    const s = this.drawS || this.s, c = Math.cos(this.yaw), sn = Math.sin(this.yaw);
     const lx = this.muzzleLocal.x * s, ly = (this.muzzleLocal.y - this.crouchAmt * 0.45) * s, lz = this.muzzleLocal.z * s;
     return out.set(this.pos.x + lx * c + lz * sn, this.pos.y + ly, this.pos.z - lx * sn + lz * c);
   }
@@ -104,7 +107,8 @@ export class Soldier {
   // Tananing yonidan o'tgan o'q endi tegmaydi. Qaytaradi: { dist, head, zone, mul } — mul: oyoq/qo'lga tekkan o'qning zarar ko'paytuvchisi.
   hitTest(o, d, maxD) {
     if (!this.alive) return null;
-    const s = this.s, w = s * (this.build || 1), c = this.crouchAmt, co = c * 0.45, x = this.pos.x, y = this.pos.y, z = this.pos.z;
+    if (this.proneAmt > 0.5) return this.hitTestProne(o, d, maxD);
+    const s = this.drawS || this.s, w = s * (this.build || 1), c = this.crouchAmt, co = c * 0.45, x = this.pos.x, y = this.pos.y, z = this.pos.z;
     const hf = this.zombie ? 0.14 * s : 0;   // zombining boshi oldinga engashgan
     const th = raySphere(o, d, x + Math.sin(this.yaw) * hf, y + (1.66 - co) * s - (hf ? 0.03 : 0), z + Math.cos(this.yaw) * hf, 0.13 * s);
     const hip = (0.92 - co) * s;
@@ -119,6 +123,29 @@ export class Soldier {
     }
     if (t > maxD) return null;
     return { dist: t, head: zone === 'head', zone, mul, soldier: this };
+  }
+
+  // Yotgan askar: bosh old tomonda (pos yonida), tana va oyoqlar orqaga cho'zilgan — yer bo'ylab sharlar zanjiri
+  hitTestProne(o, d, maxD) {
+    const s = this.s, fx = Math.sin(this.yaw) * s, fz = Math.cos(this.yaw) * s, x = this.pos.x, y = this.pos.y, z = this.pos.z;
+    let t = raySphere(o, d, x + fx * 0.08, y + 0.3 * s, z + fz * 0.08, 0.14 * s), zone = 'head', mul = 1;
+    for (const k of [0.3, 0.58]) { const tt = raySphere(o, d, x - fx * k, y + 0.2 * s, z - fz * k, 0.24 * s); if (tt < t) { t = tt; zone = 'torso'; mul = 1; } }
+    for (const k of [0.92, 1.22, 1.5]) { const tl = raySphere(o, d, x - fx * k, y + 0.14 * s, z - fz * k, 0.17 * s); if (tl < t) { t = tl; zone = 'leg'; mul = 0.75; } }
+    if (t > maxD) return null;
+    return { dist: t, head: zone === 'head', zone, mul, soldier: this };
+  }
+
+  // Qadam: yaqinda yurgan odam eshitiladi va (raqib bo'lsa) xaritada iz qoldiradi. Cho'kkalab yoki yotib yurgan odam sassiz.
+  footstep(dt, sp) {
+    if (sp < 2.3 || this.crouchAmt > 0.5 || this.proneAmt > 0.5 || this.hidden) { this.stepD = 0; return; }
+    this.stepD = (this.stepD || 0) + sp * dt;
+    const run = sp > 5.2;
+    if (this.stepD < (run ? 2.7 : 2.1)) return;
+    this.stepD = 0;
+    const g = this.g, pd = g.relToPlayer(this.pos);
+    if (pd.dist > (run ? 36 : 24)) return;
+    g.sound.stepAt(g.era, pd.dist, pd.pan, run);
+    if (g.noise && g.hostile && g.hostile(this)) g.noise(this.pos, 'step');
   }
 
   // ---------- Nishonni tanlash ----------
@@ -228,7 +255,7 @@ export class Soldier {
     }
     { const dx = this.pos.x - P.pos.x, dz = this.pos.z - P.pos.z, d2 = dx * dx + dz * dz;
       if (d2 < 0.7 && d2 > 1e-6) { const d = Math.sqrt(d2), p = (0.84 - d) / d; this.pos.x += dx * p; this.pos.z += dz * p; } }
-    g.world.collideCircle(this.pos, 0.36 * this.s, this.pos.y, this.pos.y + 1.7);
+    g.world.collideCircle(this.pos, 0.36 * this.s, this.pos.y, this.pos.y + 1.7 * this.s);
     { const gh = g.world.groundHeight(this.pos.x, this.pos.z, 0.3, this.pos.y);
       this.pos.y = gh >= this.pos.y ? gh : Math.max(gh, this.pos.y - 9 * dt); }
 
@@ -254,6 +281,7 @@ export class Soldier {
     // Animatsiya: nishon ko'ringanda qurol yelkada va nishon balandligiga qaratilgan, aks holda pastga tushirilgan
     this.crouchAmt += ((this.crouch ? 1 : 0) - this.crouchAmt) * Math.min(1, dt * 8);
     const sp = Math.sqrt(this.vel.x * this.vel.x + this.vel.z * this.vel.z);
+    if (this.team === 'enemy' && !this.isZombie) this.footstep(dt, sp);   // dushman askarning qadami (ittifoqchilar doim yonimizda — ularniki eshittirilmaydi)
     const aiming = this.visible && !!this.target;
     let pitch = 0;
     if (aiming) { const tp = this.target.getAimPoint(_v2); pitch = Math.atan2(tp.y - (this.pos.y + this.muzzleLocal.y * this.s), Math.hypot(tp.x - this.pos.x, tp.z - this.pos.z) || 1); }
@@ -335,6 +363,7 @@ export class Soldier {
     if (tgt === P) {
       if (P.sprinting) p *= 0.55; else if (P.moving) p *= 0.75;
       if (P.crouch) p *= 0.8;
+      if (P.prone) p *= 0.5;   // yotgan o'yinchi — kichik nishon
       p *= Math.min(1, 0.45 + this.visT * 0.35);
     }
     const hit = Math.random() < p;
@@ -359,12 +388,14 @@ export class Soldier {
       if (tgt === P && end.distanceTo(P.pos) < 3) g.sound.impactNear();
     } else end = mz.clone().addScaledVector(dir, 150);
     if (tgt === P && !hit && Math.random() < 0.6) g.sound.whiz();
+    g.world.breakGlass(mz, end);   // o'q yo'lidagi deraza oynalari sinadi
     if (Math.random() < 0.55) g.fx.tracer(mz, end, this.team === 'enemy' ? (g.era === 'modern' ? 0xff8a5a : 0xffd890) : 0xc8ffb0);
     g.fx.muzzle(mz, this.type === 'heavy' ? 1.2 : 0.9);
     const pd = g.relToPlayer(this.pos);
     g.sound.shot(this.sound, pd.dist, pd.pan, true);
     this.lastFired = g.time;
     this.gunKick = 1;
+    if (this.team === 'enemy' && g.noise) g.noise(this.pos, 'shot');   // o'q uzilgan joy xaritada belgilanadi
   }
 
   damage(amount, from, head, attacker, kind) {
@@ -461,12 +492,12 @@ export class RemotePlayer extends Soldier {
     // lekin kabina oynasi/eshik oldidagi odam tashqaridan ko'rinadi.
     this.veh = veh && veh.alive ? veh : null; this.vseat = this.veh ? st.se : -1;
     this.hidden = !!(this.veh && this.veh.T.enclosed);
-    this.shown = !this.hidden || !!(this.veh.T.show && this.veh.T.show[this.vseat]);
+    this.shown = !this.hidden || this.veh.seatShown(this.vseat);
     this.chuteG.visible = !!st.ch;
     if (st.x === null || st.x === undefined) return;
     this.netPos.set(st.x, st.y, st.z);
     this.netYaw = st.yw + Math.PI; this.netPitch = st.pt || 0;
-    this.crouch = !!st.cr;
+    this.crouch = st.cr === 1 || st.cr === true; this.prone = st.cr === 2;
     if (!this.hasPos || this.pos.distanceTo(this.netPos) > 6) { this.pos.copy(this.netPos); this.yaw = this.netYaw; }
     this.hasPos = true;
     this.root.visible = this.shown;
@@ -481,7 +512,24 @@ export class RemotePlayer extends Soldier {
   damage(amount, from, head, attacker, kind) {
     if (!this.alive) return;
     this.hitFlash = 0.08;
-    if (attacker === 'player') this.g.net.send({ t: 'hit', target: this.id, dmg: Math.round(amount), head: !!head, kind: kind || 'bullet' });
+    if (attacker === 'player') this.g.net.send({ t: 'hit', target: this.id, dmg: Math.round(amount), head: !!head, kind: kind || 'bullet', wn: this.g.weaponName ? this.g.weaponName(kind) : undefined });
+  }
+  // Ism belgisi: sherikniki doim ko'rinadi; raqibniki — faqat yaqindan nishonga olinganda (aks holda pana joyda turgan o'yinchini
+  // boshi ustidagi yozuv oshkor qilib qo'yardi)
+  updateTag() {
+    const g = this.g, mk = this.marker;
+    let show = this.alive && this.shown !== false;
+    const friend = !(g.hostile && g.hostile(this));
+    // sherik: belgi devor ortidan ham ko'rinadi va uzoqda kichrayib ketmaydi (masofaga qarab kattalashadi)
+    if (mk.material.depthTest === friend) { mk.material.depthTest = !friend; mk.material.needsUpdate = true; mk.renderOrder = friend ? 999 : 0; }
+    { const c = g.camPos, d = Math.hypot(this.pos.x - c.x, this.pos.y - c.y, this.pos.z - c.z), k = friend ? Math.max(1, d / 11) : 1; mk.scale.set(1.6 * k, 0.4 * k, 1); mk.position.y += 0.2 * (k - 1); }
+    if (show && !friend) {
+      const cam = g.camPos, P = g.player, h = this.eye(_v);
+      const dx = h.x - cam.x, dy = h.y - cam.y, dz = h.z - cam.z, dist = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1;
+      const cp = Math.cos(P.pitch), dot = (-Math.sin(P.yaw) * cp * dx + Math.sin(P.pitch) * dy - Math.cos(P.yaw) * cp * dz) / dist;
+      show = dist < 30 && dot > 0.994 && g.world.los(cam, h, P.vehBox);
+    }
+    mk.visible = show;
   }
   update(dt) {
     if (this.hitFlash > 0) {
@@ -512,11 +560,17 @@ export class RemotePlayer extends Soldier {
     while (dy > Math.PI) dy -= Math.PI * 2; while (dy < -Math.PI) dy += Math.PI * 2;
     this.yaw += dy * Math.min(1, dt * 15);
     this.crouchAmt += ((this.crouch ? 1 : 0) - this.crouchAmt) * Math.min(1, dt * 8);
+    this.proneAmt += ((this.prone && !seated ? 1 : 0) - this.proneAmt) * Math.min(1, dt * 7);
     const sp = Math.sqrt(this.vel.x * this.vel.x + this.vel.z * this.vel.z);
+    if (!seated) { this.footstep(dt, sp); if (sp > 0.5) this.g.world.touchGlass(this.pos.x, this.pos.y + 1.45, this.pos.z); }   // derazadan oshgan o'yinchi oynani sindiradi
     // raqib o'yinchi: yugurmayotgan bo'lsa qurol yelkada va u qaragan balandlikka qaratilgan
     this.sit = seated && this.crouch;
     animateSoldier(this, dt, sp, sp < 6.5 || this.g.time - this.lastFired < 1.5, this.netPitch || 0);
-    this.root.position.copy(this.pos);
+    // yotgan holatda model oyoq tomonga suriladi: boshi o'yinchining haqiqiy joyida (kamerasi turgan nuqtada) bo'ladi
+    const pr = this.proneAmt;
+    { const k = this.s * pr; this.root.position.set(this.pos.x - Math.sin(this.yaw) * 1.5 * k, this.pos.y + 0.2 * k, this.pos.z - Math.cos(this.yaw) * 1.5 * k); }   // (nishon hajmlari ham shu o'lchamda: hitTestProne)
     this.root.rotation.y = this.yaw;
+    this.marker.position.set(0, 2.3 - this.crouchAmt * 0.45 * (1 - pr) - 0.8 * pr, -0.7 * pr);
+    this.updateTag();
   }
 }

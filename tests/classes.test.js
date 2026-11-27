@@ -22,7 +22,7 @@ async function single() {
   await ev(`document.getElementById('briefing').click(), 1`);
   await sleep(300);
   const pk = await ev(`[!document.getElementById('classPick').classList.contains('hidden'), document.querySelectorAll('.cpCard').length, document.getElementById('cpCards').innerText.replace(/\\n+/g, ' | ').slice(0, 400), window.__G.state]`);
-  ok('brifingdan keyin klass tanlash oynasi chiqadi (4 ta klass), jang hali boshlanmagan', pk[0] === true && pk[1] === 4 && pk[3] !== 'playing', pk[2].slice(0, 160));
+  ok('brifingdan keyin klass tanlash oynasi chiqadi (6 ta klass), jang hali boshlanmagan', pk[0] === true && pk[1] === 6 && pk[3] !== 'playing', pk[2].slice(0, 160));
   await shot(`cls_${era}_pick`);
   await ev(KEY('Digit2')); await sleep(600);
   const st = await T(`[G.state, G.cls, G.weapons.map(w => w.def.id).join(','), document.getElementById('classPick').classList.contains('hidden'), document.getElementById('weaponSlots').innerText.replace(/\\n/g, ' | ')]`);
@@ -36,7 +36,7 @@ async function single() {
     await T(`(D.mouse.R = true, 1)`);
     await until(`G.ads >= 1`);
     await sleep(250);
-    const a = await T(`(() => { const W = G.weapons[0], g = W.vm.group; return [W.def.id, W.def.name, +g.position.x.toFixed(4), +g.position.y.toFixed(4), +g.rotation.x.toFixed(4), +g.rotation.y.toFixed(4), +D.camera.fov.toFixed(1), W.def.adsFov,
+    const a = await T(`(() => { const W = G.weapons[0], g = W.vm.group; return [W.def.id, W.def.name, +g.position.x.toFixed(4), +g.position.y.toFixed(4), +g.rotation.x.toFixed(4), +g.rotation.y.toFixed(4), +D.camera.fov.toFixed(1), +(W.def.adsFov * D.settings.fov / 80).toFixed(1),   // (mo'ljal burchagi tanlangan ko'rish burchagiga nisbatan: standart 62°, jadval 80° ga yozilgan)
       getComputedStyle(document.getElementById('crosshair')).opacity, getComputedStyle(document.getElementById('scope')).display, g.visible, !!W.def.scope]; })()`);
     const aligned = Math.abs(a[2]) < 0.0015 && Math.abs(a[3]) < 0.0015 && Math.abs(a[4]) < 0.004 && Math.abs(a[5]) < 0.004;
     ok(`klass ${c + 1}: ${a[1]} — mo'ljal ekran markazida, nishon belgisi yashirin, FOV ${a[7]}°`,

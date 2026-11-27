@@ -12,6 +12,7 @@ const SHOT = {
   rocket:  { crack: [900, 0.7, 0.35], body: [600, 1.1, 0.7], thump: [70, 1.0, 0.35], tail: [1800, 0.9, 1.3] },
   cannon:  { crack: [1500, 1.1, 0.12], body: [500, 1.3, 0.5], thump: [60, 1.3, 0.4], tail: [400, 0.7, 1.8] },
   gl:      { crack: [700, 0.5, 0.08], body: [350, 0.9, 0.18], thump: [95, 0.9, 0.16], tail: [400, 0.2, 0.4] },
+  supp:    { crack: [1500, 0.2, 0.035], body: [700, 0.32, 0.09], thump: [150, 0.28, 0.06], tail: [500, 0.06, 0.25] },   // ovoz so'ndirgich
 };
 
 export class SoundEngine {
@@ -212,6 +213,13 @@ export class SoundEngine {
     this.tone(d, t, 0.12, { type: 'sine', freq: 62, freqEnd: 40, gain: 0.8 });
     this.tone(d, t + 0.22, 0.12, { type: 'sine', freq: 55, freqEnd: 38, gain: 0.6 });
   }
+  // Boshqa odamning qadami: masofa va yo'nalishga qarab eshitiladi
+  stepAt(era, dist = 0, pan = 0, sprint = false) {
+    if (!this.ctx) return;
+    const t = this.t, d = this.bus(dist * 1.6, pan, 0.06, sprint ? 1.25 : 0.95);
+    this.noise(d, t, era === 'historical' ? 0.14 : 0.1, { type: 'bandpass', freq: (era === 'historical' ? 1500 : 950) + Math.random() * 500, q: 1.1, gain: 0.3, attack: 0.012 });
+    this.tone(d, t, 0.06, { type: 'sine', freq: 95, freqEnd: 55, gain: 0.16 });
+  }
   step(era, sprint) {
     if (!this.ctx) return;
     const t = this.t, d = this.bus(0, (Math.random() - 0.5) * 0.3, 0.02, sprint ? 0.7 : 0.5);
@@ -238,6 +246,14 @@ export class SoundEngine {
   pin() { if (!this.ctx) return; const d = this.bus(0, 0.2, 0.05, 0.6); this.tone(d, this.t, 0.06, { type: 'triangle', freq: 2600, gain: 0.15 }); this.noise(d, this.t + 0.08, 0.04, { type: 'highpass', freq: 3000, gain: 0.3 }); }
   bounce(dist) { if (!this.ctx) return; const d = this.bus(dist, 0, 0.1, 0.6); this.tone(d, this.t, 0.05, { type: 'triangle', freq: 800 + Math.random() * 400, gain: 0.25 }); }
   ui() { if (!this.ctx) return; const d = this.bus(0, 0, 0, 0.4); this.tone(d, this.t, 0.05, { type: 'triangle', freq: 1200, gain: 0.2 }); }
+  // Oyna sinishi: qisqa shitirlash va bir nechta jarangdor tovush
+  glass(dist = 0, pan = 0) {
+    if (!this.ctx || dist > 70) return;
+    const d = this.bus(dist, pan, 0.2, 0.75), t = this.t;
+    this.noise(d, t, 0.32, { type: 'highpass', freq: 3200, gain: 0.5, q: 0.6 });
+    this.noise(d, t + 0.05, 0.5, { type: 'bandpass', freq: 6200, gain: 0.22, q: 2 });
+    for (let i = 0; i < 6; i++) this.tone(d, t + 0.02 + Math.random() * 0.3, 0.09 + Math.random() * 0.12, { type: 'sine', freq: 2400 + Math.random() * 4200, gain: 0.07 });
+  }
   ping() { if (!this.ctx) return; const d = this.bus(0, 0, 0.3, 0.5); this.tone(d, this.t, 0.4, { type: 'sine', freq: 1300, gain: 0.2 }); this.tone(d, this.t + 0.15, 0.4, { type: 'sine', freq: 1750, gain: 0.15 }); }
   horn() {
     if (!this.ctx) return;

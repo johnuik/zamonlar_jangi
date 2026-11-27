@@ -106,6 +106,7 @@ const ok = (name, cond, extra = '') => L(`${cond ? '  OK  ' : '  XATO'} ${name} 
   await ev(`window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space' })), 1`);
   await sleep(300);
   ok("parashyut o'zi ochilmadi, PROBEL bilan ochildi", auto === false && (await ev(`window.__G.chute === true && !window.__G.inVeh`)), 'vy=' + await ev(`+window.__dbg.player.vel.y.toFixed(1)`));
+  await keys({ Space: false });   // tugma qo'yib yuboriladi — aks holda qo'ngach o'yinchi to'xtovsiz sakrayveradi va "yerda" holati deyarli ushlanmaydi
   await ev(`window.__dbg.player.pitch = 1.2, 1`);
   await sleep(700);
   await shot(`sp_${era}_chute`);

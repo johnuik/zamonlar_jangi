@@ -1,5 +1,8 @@
 import * as THREE from '../lib/three.module.js';
+import { rbox } from './gfx.js';
 import { STEP_H } from './world.js';
+import { VEH_STATS } from './shared.mjs';
+import { attachVeh, vehModelFor } from './vehskin.js';
 
 // roles — har bir o'rinning vazifasi; sit — o'tirgan holat; show — yopiq transportda ham tashqaridan ko'rinadigan o'rinlar
 // zones — oyna/ochiq eshik zonalari [o'rin, x0,y0,z0, x1,y1,z1] (korpus koordinatasida): shu yerga tekkan o'q
@@ -9,7 +12,7 @@ import { STEP_H } from './world.js';
 export const BURN_AT = 0.3;   // joni shu ulushdan pastga tushgan transport yonadi (yer transporti yurmay qoladi)
 export const VTYPES = {
   heli: {
-    name: 'Hujumchi vertolyot', hp: 900, seats: 4, r: 2.3, box: [2.6, 3.0, 5.6], boxOff: -0.5, camDist: 14, camH: 2.4, enterR: 5.5, enclosed: true,
+    name: 'Hujumchi vertolyot', r: 2.3, box: [2.6, 3.0, 5.6], boxOff: -0.5, camDist: 14, camH: 2.4, enterR: 5.5, enclosed: true,
     // 2 va 3-o'rinlar — ochiq eshik oldidagi yo'lovchilar: ular o'z qurolidan otadi (chap va o'ng tomonga)
     seatNames: ['uchuvchi', "o'ng bort o'qchisi", "chap eshik (o'z quroli)", "o'ng eshik (o'z quroli)"], roles: ['pilot', 'gunner', 'pass', 'pass'], sit: [true, false, true, true], show: [true, true, true, true],
     fly: { maxH: 24, maxV: 9, turn: 2.0, acc: 1.4 }, rockets: 12, rocketReload: 15,
@@ -17,9 +20,10 @@ export const VTYPES = {
     zones: [[0, -0.85, 1.2, 2.0, 0.85, 2.4, 3.5], [1, -1.4, 1.15, -0.55, -0.95, 2.15, 0.4], [2, 0.95, 1.15, -1.0, 1.4, 2.15, 0.4], [3, -1.4, 1.15, -1.9, -0.95, 2.15, -0.55]],
   },
   chinook: {
-    name: 'Chinuk', hp: 2100, seats: 6, r: 3.0, box: [3.4, 5.0, 9.6], boxOff: 0, camDist: 20, camH: 3.6, enterR: 7.5, enclosed: true,
+    name: 'Chinuk', r: 3.0, box: [3.4, 5.0, 9.6], boxOff: 0, camDist: 20, camH: 3.6, enterR: 7.5, enclosed: true,
     seatNames: ['uchuvchi', 'ikkinchi uchuvchi', "chap bort o'qchisi", "o'ng bort o'qchisi", "yo'lovchi", "yo'lovchi"],
-    roles: ['pilot', 'copilot', 'gunner', 'gunner', 'pass', 'pass'], sit: [true, true, false, false, true, true], show: [true, true, true, true, false, false],
+    // 'rider' — yuk bo'limida o'tirgan yo'lovchi: quroldan otmaydi (yopiq korpus ichidan devor orqali o'q uzib bo'lmaydi); o'rnidan turib, rampa oldida otsa bo'ladi
+    roles: ['pilot', 'copilot', 'gunner', 'gunner', 'rider', 'rider'], sit: [true, true, false, false, true, true], show: [true, true, true, true, false, false],
     fly: { maxH: 17, maxV: 7, turn: 1.3, acc: 1.0 },
     body: [-1.4, 0.8, -4.25, 1.4, 3.2, 3.9],
     zones: [[0, 0, 1.55, 3.9, 1.2, 2.85, 5.3], [1, -1.2, 1.55, 3.9, 0, 2.85, 5.3], [2, 1.35, 1.45, 1.6, 1.8, 2.75, 2.8], [3, -1.8, 1.45, 1.6, -1.35, 2.75, 2.8]],
@@ -39,31 +43,31 @@ export const VTYPES = {
     },
   },
   jeep: {
-    name: 'Jip', hp: 600, seats: 2, r: 1.35, box: [2.0, 1.15, 4.2], boxOff: 0, camDist: 8, camH: 1.8, enterR: 4.2,
+    name: 'Jip', r: 1.35, box: [2.0, 1.15, 4.2], boxOff: 0, camDist: 8, camH: 1.8, enterR: 4.2,
     seatNames: ['haydovchi', 'pulemyotchi'], roles: ['driver', 'gunner'], sit: [true, false],
     car: { max: 18, rev: 7, acc: 13, steer: 1.7, wheelR: 0.42 },
   },
   quad: {
-    name: 'Kvadrotsikl', hp: 300, seats: 2, r: 0.85, box: [1.25, 1.05, 2.1], boxOff: 0, camDist: 6, camH: 1.5, enterR: 3.4,
+    name: 'Kvadrotsikl', r: 0.85, box: [1.25, 1.05, 2.1], boxOff: 0, camDist: 6, camH: 1.5, enterR: 3.4,
     seatNames: ['haydovchi', "yo'lovchi"], roles: ['driver', 'pass'], sit: [true, true],
     car: { max: 25, rev: 6, acc: 19, steer: 2.4, wheelR: 0.3 },
   },
   // bulletMul / explMul — zirh: oddiy o'q deyarli ta'sir qilmaydi, portlash kuchsizroq ta'sir qiladi.
   // tank.rearMul — orqa zirh yupqa: yonish darajasigacha oddiy o'q ham shu ko'paytuvchi bilan ta'sir qiladi.
   tank: {
-    name: "Og'ir tank", hp: 1000, seats: 2, r: 2.0, box: [3.3, 2.4, 6.4], boxOff: 0, camDist: 11, camH: 3.0, enterR: 5.2, enclosed: true, bulletMul: 0.08, explMul: 0.7,
+    name: "Og'ir tank", r: 2.0, box: [3.3, 2.4, 6.4], boxOff: 0, camDist: 11, camH: 3.0, enterR: 5.2, enclosed: true, bulletMul: 0.08, explMul: 0.7,
     seatNames: ["haydovchi-to'pchi", 'komandir pulemyoti'], roles: ['driver', 'gunner'], sit: [true, false], show: [true, true],
     tank: { max: 9, rev: 4.5, acc: 7, turn: 0.95, turret: 1.5, eyeY: 2.85, pivotY: 1.95, turretZ: 0.2, barBase: 1.6, barLen: 3.85, mgX: 0.3, gun: 'tshell', reload: 3.0, rearMul: 0.5, trackX: 1.42 },
   },
   ltank: {
-    name: 'Yengil tank', hp: 650, seats: 2, r: 1.7, box: [2.8, 2.1, 5.4], boxOff: 0, camDist: 9.5, camH: 2.6, enterR: 4.8, enclosed: true, bulletMul: 0.14, explMul: 0.85,
+    name: 'Yengil tank', r: 1.7, box: [2.8, 2.1, 5.4], boxOff: 0, camDist: 9.5, camH: 2.6, enterR: 4.8, enclosed: true, bulletMul: 0.14, explMul: 0.85,
     seatNames: ["haydovchi-to'pchi", 'komandir pulemyoti'], roles: ['driver', 'gunner'], sit: [true, false], show: [true, true],
     tank: { max: 14, rev: 6, acc: 11, turn: 1.4, turret: 2.2, eyeY: 2.42, pivotY: 1.7, turretZ: -0.3, barBase: 1.0, barLen: 3.0, mgX: 0.22, gun: 'lshell', reload: 1.3, rearMul: 0.6, trackX: 1.18 },
   },
   // Kamaz: kabinada haydovchi va yo'lovchi; ochiq kuzovga orqa zinadan yurib chiqiladi (u yerda o'z qurolingiz bilan otasiz).
   // openHull — o'q va granatalar AABB qutisiga emas, kuzovning haqiqiy shakliga (walk.boxes) tegadi: bortdan baland turgan odamga o'q tegadi.
   truck: {
-    name: 'Kamaz', hp: 1000, seats: 2, r: 1.7, box: [2.6, 2.95, 8.4], boxOff: -0.3, camDist: 13, camH: 3.0, enterR: 6.2, enclosed: true, openHull: true,
+    name: 'Kamaz', r: 1.7, box: [2.6, 2.95, 8.4], boxOff: -0.3, camDist: 13, camH: 3.0, enterR: 6.2, enclosed: true, openHull: true,
     seatNames: ['haydovchi', "yo'lovchi (kabinada)"], roles: ['driver', 'pass'], sit: [true, true], show: [true, true],
     car: { max: 15, rev: 5, acc: 7.5, steer: 1.05, wheelR: 0.55, front: 3.9, hitR: 2.0 },
     body: [-1.25, 0.9, 1.3, 1.25, 2.9, 3.7],
@@ -80,10 +84,13 @@ export const VTYPES = {
   },
   cannon: {
     // shield — qalqon: stvol qaragan tomondan (shu burchak ichida) kelgan o'q to'pchiga emas, pushkaga tegadi
-    name: 'Zenit pushkasi', hp: 1500, seats: 1, r: 1.0, box: [1.7, 0.95, 1.7], boxOff: 0, camDist: 5.5, camH: 2.2, enterR: 3.6, bulletMul: 0.3, explMul: 0.6, shield: 1.2,
+    name: 'Zenit pushkasi', r: 1.0, box: [1.7, 0.95, 1.7], boxOff: 0, camDist: 5.5, camH: 2.2, enterR: 3.6, bulletMul: 0.3, explMul: 0.6, shield: 1.2,
     seatNames: ["to'pchi"], roles: ['driver'], sit: [false],
   },
 };
+
+// jon (hp) va o'rinlar soni (seats) server bilan umumiy jadvaldan olinadi
+for (const k in VTYPES) Object.assign(VTYPES[k], VEH_STATS[k]);
 
 // O'rindiqlar (oyoq nuqtasi), o'qchining ko'zi va chiqish joylari — transportning mahalliy koordinatasida
 const SEAT_POS = {
@@ -143,7 +150,7 @@ export function gunCool(g, dt) {
 }
 
 export class Vehicle {
-  constructor(game, id, type, x, z, yaw) {
+  constructor(game, id, type, x, z, yaw, skinDef) {   // skinDef — boshqa model ko'rinishi (berilmasa — turga mos model)
     this.g = game; this.id = id; this.type = type; this.T = VTYPES[type];
     this.spawn = { x, z, yaw };
     this.pos = new THREE.Vector3(x, 0, z); this.vel = new THREE.Vector3();
@@ -160,11 +167,15 @@ export class Vehicle {
     this.fpHide = [];   // o'qchining o'z ko'rinishida yashiriladigan qismlar (kamerani to'sib qo'ymasligi uchun)
     this.trackMesh = [[], []]; this.trackDrop = [];
     this.build();
+    this.skinDef = skinDef !== undefined ? skinDef : vehModelFor(type, game.era); this.skin = null; this.tk = null;   // haqiqiy model (vehskin.js) — yuklangach ulanadi
+    this.skinUp();
     this.updateBox();
     game.world.addBox(this.box);
     this.visual(0);
   }
 
+  // modelni ulash (yuklanmagan bo'lsa — keyingi kadrlarda qayta uriniladi); jipdagi pulemyot kodda qurilgani bilan qoladi
+  skinUp() { if (this.skinDef && !this.skin) attachVeh(this, this.skinDef, [this.mgG]); }
   get burning() { return this.alive && this.hp <= this.T.hp * BURN_AT; }
   get noFuel() { return this.limited && this.fuel <= 0; }
   // Yer transporti yonayotgan, gusenitsasi uzilgan yoki yoqilg'isi tugagan bo'lsa yurmaydi (minora va qurol ishlaydi)
@@ -198,7 +209,7 @@ export class Vehicle {
     const root = (this.root = new THREE.Group());
     const hull = (this.hull = new THREE.Group()); root.add(hull);
     const box = (w, h, d, m, x, y, z, parent = hull) => {
-      const me = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m);
+      const me = new THREE.Mesh(rbox(w, h, d), m);   // qirralari yumaloqlangan (gfx.js)
       me.position.set(x, y, z); me.castShadow = true; me.receiveShadow = true; parent.add(me); return me;
     };
     const cyl = (r1, r2, len, m, x, y, z, axis, parent = hull, seg = 12) => {
@@ -410,7 +421,23 @@ export class Vehicle {
     const dx = p.x - this.pos.x, dz = p.z - this.pos.z, c = Math.cos(this.yaw), s = Math.sin(this.yaw);
     return out.set(dx * c - dz * s, p.y - this.pos.y, dx * s + dz * c);
   }
+  // Haqiqiy model qo'yilgan bo'lsa — uning o'z o'rindiqlari (vehskin.js: seats/guns/sit); to'rtinchi qiymat 1 — minora bilan birga aylanadi
+  seatDef(tab, i) { const ov = this.skin && this.skinDef && this.skinDef[tab]; return ov ? (Array.isArray(ov) ? ov[i] || ov[0] : ov[i]) : null; }
+  seatSit(i) { const ov = this.skin && this.skinDef && this.skinDef.sit; return !!(ov ? ov[i] : this.T.sit && this.T.sit[i]); }
+  // yopiq transportda shu o'rindagi odam tashqaridan ko'rinadimi (model qo'yilgan tankda haydovchi ichkarida — ko'rinmaydi)
+  seatShown(i) { const ov = this.skin && this.skinDef && this.skinDef.show; return !!(ov ? ov[i] : this.T.show && this.T.show[i]); }
+  localSeat(s, out) {
+    if (s[3] === 1 && this.T.tank) {
+      this.local(0, s[1], this.T.tank.turretZ, out);
+      const ca = Math.cos(this.aimYaw), sa = Math.sin(this.aimYaw);
+      out.x += s[0] * ca + s[2] * sa; out.z += -s[0] * sa + s[2] * ca;
+      return out;
+    }
+    return this.local(s[0], s[1], s[2], out);
+  }
   seatPos(i, out) {
+    const ov = this.seatDef('seats', i);
+    if (ov) return this.localSeat(ov, out);
     const t = SEAT_POS[this.type];
     if (!t) return this.local(0, 0.1, -1.25, out, this.aimYaw);
     const s = t[i] || t[0];
@@ -418,6 +445,8 @@ export class Vehicle {
   }
   // O'qchining ko'z nuqtasi (birinchi shaxs)
   gunPos(out, seat = 1) {
+    const ov = this.seatDef('guns', seat);
+    if (ov) return this.localSeat(ov, out);
     const s = (GUN_POS[this.type] || {})[seat] || [0, 2.3, -1.5];
     return this.local(s[0], s[1], s[2], out);
   }
@@ -450,7 +479,7 @@ export class Vehicle {
       return this.local(this.pod ? 1.65 : -1.65, 1.2, 1.5, out);
     }
     if (this.type === 'jeep') return this.local(0, 2.0, -0.3, out);
-    const K = this.T.tank;
+    const K = this.tk || this.T.tank;   // (tk — model stvoliga moslangan qiymatlar)
     if (K) {
       // minora o'z burchagida (aimYaw) aylanadi; 'mg' — juft pulemyot, aks holda asosiy pushka
       const sy = Math.sin(this.yaw), cy = Math.cos(this.yaw), sa = Math.sin(this.aimYaw), ca = Math.cos(this.aimYaw);
@@ -741,6 +770,7 @@ export class Vehicle {
     const r = this.root;
     r.visible = this.alive;
     if (!this.alive) return;
+    if (this.skinDef && !this.skin) this.skinUp();
     r.position.copy(this.pos);
     if (this.type === 'cannon') {
       this.turret.rotation.y = this.aimYaw;

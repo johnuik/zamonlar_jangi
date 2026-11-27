@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ZAMONLAR JANGI</title>
 <link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/modern.css">
 </head>
 <body>
 <div id="game"></div>
@@ -14,12 +15,16 @@
 <div id="hurt"></div>
 <div id="flashbang"></div>
 <div id="adsVig"></div>
+<div id="zoneTint"></div>
 <div id="scope"><div class="sh"></div><div class="sv"></div><div class="mil mh"></div><div class="mil mv"></div><div class="rng"></div>
   <div id="scopeInfo"></div><div id="scopeBar"><div id="scopeBreath"></div></div></div>
 
 <!-- HUD -->
 <div id="hud" class="hidden">
-  <canvas id="minimap" width="200" height="200"></canvas>
+  <canvas id="minimap" width="260" height="260"></canvas>
+  <canvas id="bigmap" width="820" height="820"></canvas>
+  <div id="droneHud"></div>
+  <div id="zoneInfo"></div>
   <canvas id="compass" width="480" height="34"></canvas>
   <div id="waveBox">
     <div id="waveLabel">TO'LQIN 1/10</div>
@@ -33,16 +38,20 @@
   <div id="killfeed"></div>
   <div id="crosshair"><div class="ch t"></div><div class="ch b"></div><div class="ch l"></div><div class="ch r"></div><div class="dot"></div></div>
   <div id="hitmarker"><i></i><i></i><i></i><i></i></div>
+  <div id="lockBox"><span id="lockTxt"></span></div>
   <div id="healthBox">
     <div id="healthIcon">✚</div>
     <div id="healthBar"><div id="healthFill"></div></div>
     <div id="healthNum">100</div>
+    <div id="stance"></div>
+    <div id="armorBar"><div id="armorFill"></div></div>
   </div>
   <div id="weaponBox">
     <div id="weaponSlots"></div>
     <div id="weaponName">—</div>
     <div id="ammo"><span id="mag">0</span><span id="reserve">/ 0</span></div>
     <div id="grenades"></div>
+    <div id="meds"></div>
     <div id="weaponHint"></div>
   </div>
   <div id="streaks"></div>
@@ -52,7 +61,13 @@
   <div id="reloadHint"></div>
   <div id="dmgInd"></div>
   <div id="grenadeInd">💣</div>
+  <div id="chatLog"></div>
+  <input id="chatBox" maxlength="120" placeholder="Xabar yozing — Enter: yuborish, Esc: bekor" autocomplete="off">
+  <div id="killCard"></div>
 </div>
+<!-- zombi rejimi yakuni: evakuatsiya "kinosi" (keng ekran chiziqlari, yozuvlar, qorayish) -->
+<div id="cine" class="hidden"><div class="bar top"></div><div class="bar bot"></div><div class="txt"><div id="cineTitle"></div><div id="cineSub"></div></div><div class="black"></div></div>
+<div id="netLost" class="hidden"><div><b>ALOQA UZILDI</b><span id="netLostMsg">Qayta ulanmoqda...</span></div></div>
 
 <!-- Asosiy menyu -->
 <div id="menu" class="screen">
@@ -64,13 +79,13 @@
         <div class="eraYear">1944</div>
         <div class="eraName">QISHKI FRONT</div>
         <div class="eraType">TARIXIY KAMPANIYA</div>
-        <div class="eraDesc">Ikkinchi jahon urushi. Qorli shaharcha: uylarga kiring, podvallardan noyob qurol toping, jip va vertolyotni boshqaring.</div>
+        <div class="eraDesc">Ikkinchi jahon urushi. Qorli shahar: ikki qavatli uylar, dotlar va podvallar; bazuka, boshqariladigan raketa va qo'riqchi pulemyot; tank, jip va vertolyot.</div>
       </div>
       <div class="era" data-era="modern">
         <div class="eraYear">2026</div>
         <div class="eraName">CHO'L BO'RONI</div>
         <div class="eraType">ZAMONAVIY KAMPANIYA</div>
-        <div class="eraDesc">Maxsus operatsiya. Cho'ldagi shahar: optika, RPG, minigan, vertolyot raketalari va zenit pushkasi bilan jang qiling.</div>
+        <div class="eraDesc">Maxsus operatsiya. Cho'ldagi shahar: optika va so'ndirgichlar, nishonga qulflanadigan RPG, kamikadze dron, avtomatik turel, vertolyot va tanklar.</div>
       </div>
     </div>
     <div class="row"><span class="lbl">QIYINLIK</span>
@@ -82,21 +97,25 @@
       </div>
     </div>
     <div class="row"><span class="lbl">REJIM</span>
-      <div id="spModes" class="opts"><button data-m="waves" class="sel">To'lqinlar</button><button data-m="zombie">☣ Zombi (tun)</button></div>
+      <div id="spModes" class="opts"><button data-m="waves" class="sel">To'lqinlar</button><button data-m="zombie">☣ Zombi (karantin zonasi)</button></div>
     </div>
     <div class="row"><span class="lbl">XARITA</span>
-      <div id="spMaps" class="opts"><button data-map="town" class="sel">Shaharcha</button><button data-map="big">Katta shahar</button></div>
+      <div id="spMaps" class="opts"><button data-map="city" class="sel">Yangi shahar</button><button data-map="town">Shaharcha</button><button data-map="big">Aerodrom</button><button data-map="wild">Karantin zonasi (800 m)</button></div>
+    </div>
+    <div class="row"><span class="lbl">TRANSPORT</span>
+      <div id="spVeh" class="opts"><button data-v="1" class="sel">Bor</button><button data-v="0">Yo'q (faqat piyoda jang)</button></div>
     </div>
     <button id="btnPlay" class="big">JANGGA KIRISH ▶</button>
     <div class="row small">
       <button id="btnSettings">⚙ Sozlamalar</button>
       <button id="btnControls">⌨ Boshqaruv</button>
     </div>
+    <div id="progBox"></div>
     <div id="records"></div>
   </div>
   <div id="mpBox">
     <div class="mpTitle">⚑ TARMOQDA O'YNASH</div>
-    <div class="mpSub">Bitta tarmoqdagi do'stlaringiz bilan o'ynang. Uch rejim: Bayroq, Deathmatch va Zombi (4 kishi birga, qolganlar zombi). Har tug'ilishda klass tanlang. Tank, vertolyot, Kamaz, jip va noyob qurollar bilan!</div>
+    <div class="mpSub">Bitta tarmoqdagi do'stlaringiz bilan o'ynang. To'rt rejim: Bayroq, Deathmatch, Jamoaviy jang va Zombi. Transportli yoki transportsiz. Chat [T], belgi qo'yish [X]; aloqa uzilsa — o'zi qayta ulanadi.</div>
     <input id="mpName" maxlength="16" placeholder="Ismingizni yozing" autocomplete="off">
     <button id="btnCreate" class="mpBtn">＋ XONA YARATISH</button>
     <div class="mpOr">yoki do'stingiz bergan kod bilan kiring</div>
@@ -118,11 +137,33 @@
     <div class="lobbyRow"><span class="lbl">REJIM</span>
       <button class="lobbyMode" data-mode="flag">⚑ Bayroq</button>
       <button class="lobbyMode" data-mode="dm">☠ Deathmatch</button>
+      <button class="lobbyMode" data-mode="tdm">⚔ Jamoaviy jang</button>
       <button class="lobbyMode" data-mode="zombie">☣ Zombi</button>
+      <button class="lobbyMode" data-mode="br">🪂 Jang maydoni</button>
+      <button class="lobbyMode" data-mode="gg">🔫 Gun game</button>
+    </div>
+    <div class="lobbyRow" id="lobbyTeamsRow"><span class="lbl">TARKIB</span>
+      <button class="lobbyTeams" data-v="0">Har kim o'zi uchun</button>
+      <button class="lobbyTeams" data-v="1">Jamoa bo'lib</button>
     </div>
     <div class="lobbyRow"><span class="lbl">XARITA</span>
+      <button class="lobbyMap" data-map="city">Yangi shahar</button>
       <button class="lobbyMap" data-map="town">Shaharcha</button>
-      <button class="lobbyMap" data-map="big">Katta shahar</button>
+      <button class="lobbyMap" data-map="big">Aerodrom</button>
+      <button class="lobbyMap" data-map="wild">Karantin zonasi (800 m)</button>
+    </div>
+    <div class="lobbyRow"><span class="lbl">TRANSPORT</span>
+      <button class="lobbyVeh" data-v="1">Bor</button>
+      <button class="lobbyVeh" data-v="0">Yo'q (piyoda jang)</button>
+    </div>
+    <div class="lobbyRow"><span class="lbl">ZONA</span>
+      <button class="lobbyZone" data-v="1">Torayadi (PUBG kabi)</button>
+      <button class="lobbyZone" data-v="0">Yo'q</button>
+    </div>
+    <div class="lobbyRow" id="lobbyTeamRow"><span class="lbl">JAMOANGIZ</span>
+      <button class="lobbyTeam" data-tm="1">Qizil</button>
+      <button class="lobbyTeam" data-tm="2">Ko'k</button>
+      <button class="lobbyTeam" data-tm="0">Avtomatik</button>
     </div>
     <div class="lbl">O'YINCHILAR</div>
     <div id="lobbyPlayers"></div>
@@ -139,6 +180,7 @@
     <div id="cpTitle">KLASSNI TANLANG</div>
     <div id="cpSub"></div>
     <div id="cpCards"></div>
+    <div id="cpLoadout"></div>
     <div id="cpFoot">Barcha klasslarda bir xil: <b>2</b> — to'pponcha · <b>3</b> — pichoq · <b>4</b> — granata (qo'lga olish) · <b>G</b> — granatani darhol otish</div>
     <button id="cpGo" class="big">JANGGA KIRISH ▶</button>
   </div>
@@ -148,12 +190,15 @@
   <div class="panel">
     <h2>SOZLAMALAR</h2>
     <label>Sichqoncha sezgirligi <span id="vSens"></span><input type="range" id="sSens" min="0.2" max="3" step="0.05"></label>
-    <label>Ko'rish burchagi (FOV) <span id="vFov"></span><input type="range" id="sFov" min="60" max="105" step="1"></label>
+    <label>Ko'rish burchagi (FOV) <span id="vFov"></span><input type="range" id="sFov" min="50" max="95" step="1"></label>
     <label>Ovoz balandligi <span id="vVol"></span><input type="range" id="sVol" min="0" max="1" step="0.05"></label>
     <label>Grafika sifati
       <select id="sQual"><option value="low">Past (tez)</option><option value="medium">O'rta</option><option value="high">Yuqori</option><option value="ultra">Ultra (kuchli videokarta uchun)</option></select>
     </label>
-    <div class="note">Grafika sifati keyingi jangda qo'llanadi. Kadr tezligi pasaysa, tasvir aniqligi avtomatik kamayadi.</div>
+    <label>Tasvir aniqligi
+      <select id="sRes"><option value="auto">Avto — kadr tezligiga moslashadi (tavsiya)</option><option value="full">To'liq — doim ekran aniqligida (sekinroq bo'lishi mumkin)</option><option value="p75">75% — tezroq</option></select>
+    </label>
+    <div class="note">Grafika sifati keyingi jangda qo'llanadi. Tasvir doim ekran aniqligida chiqariladi; "Avto" rejimida kadr tezligi pasaysa, faqat sahnaning ichki aniqligi kamayadi.</div>
     <div class="note" id="gpuInfo"></div>
     <button class="back">◀ Orqaga</button>
   </div>
@@ -168,12 +213,13 @@
       <tr><td>Chap tugma</td><td>O'q uzish</td></tr>
       <tr><td>O'ng tugma</td><td>Mo'ljalga olish: qurolning o'z mo'ljali (kollimator, tirqish-ustun, optika) ekran markaziga keladi</td></tr>
       <tr><td>Shift</td><td>Yugurish / Snayperda nafasni ushlash</td></tr>
-      <tr><td>Probel</td><td>Sakrash</td></tr>
+      <tr><td>Probel</td><td>Sakrash · past to'siq yoki deraza tokchasi oldida — oshib o'tish (derazadan uyga kirish mumkin) · yashik ustiga chiqish</td></tr>
       <tr><td>C</td><td>Cho'kkalash (yoqish/o'chirish)</td></tr>
+      <tr><td>Z</td><td>Yotish (yoqish/o'chirish): sekin emaklaysiz, lekin sizni ko'rish va urish qiyin, o'zingiz esa aniqroq otasiz</td></tr>
       <tr><td>R</td><td>Qayta o'qlash</td></tr>
-      <tr><td>Klass</td><td>Har safar jangga kirishdan oldin tanlanadi (tarmoqda — o'lgandan keyingi 4 soniyada, 1–4 tugmalari): Avtomatchi, Injener (PP), Snayper, Shturmchi (drobovik)</td></tr>
+      <tr><td>Klass</td><td>Har safar jangga kirishdan oldin tanlanadi (tarmoqda — o'lgandan keyingi 4 soniyada, 1–6 tugmalari): Avtomatchi, Injener (PP), Snayper, Shturmchi (drobovik), Pulemyotchi, Mergan (yarim avtomat optik miltiq). Shu oynada asosiy qurol varianti, to'pponcha va qo'shimchalar (optika, so'ndirgich, tutqich...) tanlanadi — ular daraja oshgan sari ochiladi</td></tr>
       <tr><td>1 / 2 / 3 / 4</td><td>1 — asosiy qurol · 2 — to'pponcha · 3 — pichoq · 4 — granata (qo'lga olish) · G'ildirak — navbat bilan</td></tr>
-      <tr><td>5</td><td>Noyob qurol (podvaldan topiladi)</td></tr>
+      <tr><td>5</td><td>Noyob qurol (podval, dot, minora va omborlardan topiladi): <b>Bazuka/RPG</b> — ko'rib turgan transportingizga nishonni qaratsangiz bir soniyada belgilanadi va raketa faqat o'shani quvadi (ko'rinmayotgan transport belgilanmaydi, odamni quvmaydi) · <b>Avtomatik turel</b> — yerga o'rnatiladi, o'zi otadi · <b>Dron</b> — o'zingiz boshqarasiz (W/A/S/D, Probel/Shift), 1 ta bomba tashlaydi, nishonga tez borib urilsa o'zi portlaydi, bitta o'q tegsa yo'q bo'ladi · <b>Tankbuzar miltiq</b> — zirhni teshadi</td></tr>
       <tr><td>F</td><td>Transportga o'tirish / chiqish</td></tr>
       <tr><td>Q</td><td>O'rin tanlash: o'tirishdan oldin ham, transport ichida ham (keyingi bo'sh o'rin) · 1–6 — aniq o'rin</td></tr>
       <tr><td>Probel (havoda)</td><td>Parashyutni ochish — o'zi ochilmaydi, balanddan yiqilish zarar beradi</td></tr>
@@ -187,14 +233,22 @@
       <tr><td>Pichoq qo'lda (3)</td><td>Chap tugma — tez kesish · O'ng tugma — sanchish (bir zarbada). Pichoq bilan tezroq yugurasiz</td></tr>
       <tr><td>V</td><td>Piyoda: pichoq zarbasi (qurolni almashtirmasdan) · Transportda: 1-shaxs / 3-shaxs ko'rinishi</td></tr>
       <tr><td>B</td><td>Ketma-ket o'ldirish mukofoti</td></tr>
-      <tr><td>L</td><td>Fonar (tungi zombi rejimida)</td></tr>
+      <tr><td>T</td><td>Tarmoqda: chat (jamoaviy rejimda — faqat jamoangizga)</td></tr>
+      <tr><td>Zona</td><td>Tarmoq jangida xavfsiz doira bosqichma-bosqich torayadi (ko'k devor). Tashqarida qolsangiz jon ketadi — yerdagi oq halqa (keyingi doira) ichiga kiring. Xaritada: ko'k doira — hozirgi zona, oq uzuq chiziq — keyingisi</td></tr>
+      <tr><td>M</td><td>Katta xarita: binolar, yo'llar, transport, sheriklar (ko'k), ko'ringan raqiblar (qizil nuqta), noyob qurollar va vositalar</td></tr>
+      <tr><td>Xaritadagi tovushlar</td><td>Raqib o'q uzgan joy qizil yulduz bilan (uzoqda bo'lsa — mini xarita chetida uchburchak), yaqinda yurgan raqibning qadami sariq izlar bilan ko'rsatiladi. Cho'kkalab yoki yotib yurgan odam, shuningdek so'ndirgichli qurol tovush chiqarmaydi. Bayroq kimda bo'lsa — xaritada doim ko'rinadi</td></tr>
+      <tr><td>X</td><td>Belgi qo'yish: ekran markazi qaragan joyga belgi (jamoaviy va zombi rejimida sheriklar ham ko'radi)</td></tr>
+      <tr><td>L</td><td>Fonar (zombi rejimida; tunda yoqilgan fonarni zombilar uzoqdan ko'radi)</td></tr>
       <tr><td>O'q tegishi</td><td>Boshga — eng ko'p zarar; tanaga — to'liq; oyoq va qo'lga — 25–30% kamroq. Tananing yonidan o'tgan o'q tegmaydi</td></tr>
       <tr><td>Zenit pushkasi</td><td>Qalqoni olddan kelgan o'qni to'sadi — to'pchini yon yoki orqadan oling</td></tr>
       <tr><td>Transportda yo'lovchi</td><td>O'z qurolidan otadi (1-shaxs ko'rinishida): chap tugma — otish, o'ng — mo'ljal, R — o'qlash, g'ildirak — qurol. Bort o'qchisi g'ildirak bilan pulemyot va o'z quroli orasida almashtiradi</td></tr>
       <tr><td>Zombi rejimi</td><td>Tun, yomg'ir, chaqmoq. A punktidan B → C → D ga boring. Boshida faqat to'pponcha (o'qi tugamaydi) va pichoq; yashiklarda [E] o'qi cheklangan qurollar. Transportda yoqilg'i va o'q-dori cheklangan</td></tr>
-      <tr><td>E</td><td>O'q-dori qutisi / noyob qurolni olish</td></tr>
+      <tr><td>E</td><td>O'q-dori qutisi / noyob qurolni olish / xonadagi qurolni olish (asosiy qurol yoki to'pponcha o'rniga). Qurollar har jangda xonalarda tasodifiy paydo bo'ladi</td></tr>
+      <tr><td>H</td><td>Bint bog'lash: 1,5 soniyada 40 jon qaytaradi (bog'layotganda otib bo'lmaydi). Jon o'zi tiklanmaydi — faqat aptechka, bint yoki adrenalin bilan</td></tr>
+      <tr><td>Vositalar</td><td>Xaritadagi aylanib turgan qutilar ustidan yurib o'tilsa olinadi: aptechka (to'liq jon), bintlar, zirh nimcha (zararning yarmini yutadi), adrenalin (tezlik), o'q-dori, granatalar. 30 soniyada qayta paydo bo'ladi; mini xaritada nuqta bilan ko'rsatilgan</td></tr>
       <tr><td>Esc</td><td>Pauza</td></tr>
     </table>
+    <div class="note">3D modellar: madtrollstudio (CC BY 3.0); tnnv, oscar_creativo, RomanGurd, jonathanto99, Artem Goyko, haters, skudgee, MadTrollStudio, Duane's Mind, Machine Meza, Brout, yanix, Arbuzz747, Tactical_Beard, White-Horse, Shorty_Digitan, Anick_Schwartz, Sebastian Kansik, MaX3Dd, Larkien, SpatialNeglect, notcplkerry, veightyfive, TastyTony, Andrei Milin, German Huskey, ELIZION, javadbayat, quick_loop, milhause.cz, tomasz0p0, hensyu_leader (CC BY 4.0, Sketchfab); nisu, khairul169 (CC0, OpenGameArt); Poly Haven (CC0); teksturalar — Poly Haven (CC0). To'liq ro'yxat: assets/models/CREDITS.txt</div>
     <button class="back">◀ Orqaga</button>
   </div>
 </div>
